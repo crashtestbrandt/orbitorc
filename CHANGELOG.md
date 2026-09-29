@@ -13,6 +13,9 @@ control plane and the command line for Linux, macOS and Windows to it.
   umbrella's runtime configuration, whose control-plane block now runs only where a control plane is
   present. CI runs the built escript to prove it starts.
 - `install/*.sh` are executable.
+- The release no longer forces SSL: it answered every `ws://` agent upgrade and every `http://` page from
+  any host but localhost with a 301 to an https port nothing listens on, so only the box beside the
+  control plane could join. TLS is a proxy's job in front of the process.
 - `PHX_HOST` names the address the dashboard is opened at and is allowed as a socket origin (with
   localhost); a control plane opened at its LAN address refused every dashboard socket, and each page
   reconnected by long polling until the process ran out of file descriptors.

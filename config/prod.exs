@@ -9,17 +9,10 @@ config :orbitorc_web, OrbitorcWeb.Endpoint,
   url: [host: "example.com", port: 80],
   cache_static_manifest: "priv/static/cache_manifest.json"
 
-# Force using SSL in production. This also sets the "strict-security-transport" header,
-# known as HSTS. If you have a health check endpoint, you may want to exclude it below.
-# Note `:force_ssl` is required to be set at compile-time.
-config :orbitorc_web, OrbitorcWeb.Endpoint,
-  force_ssl: [
-    rewrite_on: [:x_forwarded_proto],
-    exclude: [
-      # paths: ["/health"],
-      hosts: ["localhost", "127.0.0.1"]
-    ]
-  ]
+# No forced SSL. The control plane is a LAN service that agents dial into over `ws://` and a dashboard is
+# opened at over `http://`; `force_ssl` answered both with a 301 to an https port nothing listens on, and
+# Plug.SSL exempts only localhost, so the box beside the control plane joined and every other refused.
+# TLS, where it is wanted, is a proxy's job in front of this process.
 
 # Do not print debug messages in production
 config :logger, level: :info
