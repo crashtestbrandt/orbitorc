@@ -62,8 +62,11 @@ defmodule Orbitorc.Agent.UpgradeTest do
 
     assert_receive {:launched, script}
     body = File.read!(script)
+
+    # The module works on the expanded root (on Windows that is `c:/…`, whatever the test was given).
+    root = Path.expand(ctx.root)
     assert body =~ "Wait-Process -Id 4242"
-    assert body =~ "Move-Item -Path '#{ctx.root}' -Destination '#{ctx.root}.old'"
+    assert body =~ "Move-Item -Path '#{root}' -Destination '#{root}.old'"
     assert body =~ "Start-ScheduledTask -TaskName 'OrbitOrc Agent'"
     # Nothing moved yet: the running release is still the running release.
     assert version_at(ctx.root) == "0.1.0"
