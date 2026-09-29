@@ -50,16 +50,6 @@ each one's output, and tearing all of them down correctly when any of it fails. 
   measurement uses the LAN address, because routing it through WireGuard would put encryption and a
   userspace hop inside the thing being measured.
 
-## Status
-
-Built and tested; run against real machines only on one box so far.
-
-| | |
-| --- | --- |
-| Domain, agent, control plane | 149 tests across the three applications, including the fleet run driven end to end against fake boxes and the job runtime against a real operating-system process. |
-| Against real Godot | An authority came up with its marker read in half a second, stopping it killed the process, and a colocated run drove a server and a bot client to a verdict. |
-| Across two machines | Once: an authority on a Windows box with no desktop session and two bot clients on a Mac joining it over the LAN, both measured. |
-
 ## Where to start
 
 | | |
