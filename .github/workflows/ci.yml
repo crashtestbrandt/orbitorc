@@ -107,12 +107,16 @@ jobs:
           tar -C _build/prod/rel -czf orbitorc_agent-${{ runner.os }}-${{ runner.arch }}.tar.gz orbitorc_agent
           tar -C _build/prod/rel -czf orbitorc-${{ runner.os }}-${{ runner.arch }}.tar.gz orbitorc
           cp apps/orbitorc_cli/orbitorc orbitorc-cli-${{ runner.os }}-${{ runner.arch }}
+          # An agent verifies an upgrade against the checksum beside its archive.
+          for f in orbitorc_agent-*.tar.gz orbitorc-*.tar.gz; do shasum -a 256 "$f" > "$f.sha256"; done
       - if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
         shell: pwsh
         run: |
           Compress-Archive -Path _build/prod/rel/orbitorc_agent -DestinationPath orbitorc_agent-${{ runner.os }}-${{ runner.arch }}.zip
           Compress-Archive -Path _build/prod/rel/orbitorc -DestinationPath orbitorc-${{ runner.os }}-${{ runner.arch }}.zip
           Copy-Item apps/orbitorc_cli/orbitorc orbitorc-cli-${{ runner.os }}-${{ runner.arch }}
+          # An agent verifies an upgrade against the checksum beside its archive.
+          Get-ChildItem *.zip | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $($_.Name)" | Set-Content -NoNewline "$($_.Name).sha256" }
       - if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:

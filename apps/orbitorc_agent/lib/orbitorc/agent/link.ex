@@ -178,6 +178,17 @@ defmodule Orbitorc.Agent.Link do
     reply(socket, payload, normalize(result))
   end
 
+  # The reply leaves first; a second later the agent exits, and its service manager brings the staged
+  # release up. Nothing waits on the exit, so nothing is blocked by it.
+  @impl Slipstream
+  def handle_message(@channel, "upgrade", payload, socket) do
+    caller = caller(payload)
+    result = guarded(fn -> do_upgrade(caller, payload) end)
+    Audit.record(caller, "upgrade", Map.take(payload, ["url", "version"]), result)
+    if match?({:ok, _}, result), do: Process.send_after(self(), :exit_for_upgrade, 1_000)
+    reply(socket, payload, normalize(result))
+  end
+
   @impl Slipstream
   def handle_message(@channel, "shot", payload, socket) do
     caller = caller(payload)
@@ -252,6 +263,15 @@ defmodule Orbitorc.Agent.Link do
   end
 
   @impl Slipstream
+  def handle_info(:exit_for_upgrade, socket) do
+    Logger.info("orbitorc: exiting for an upgrade; the service manager brings the new release up")
+
+    # Non-zero, so a manager that restarts only on failure restarts this. The test suite turns it off.
+    if Application.get_env(:orbitorc_agent, :exit_on_upgrade, true), do: System.stop(3)
+    {:noreply, socket}
+  end
+
+  @impl Slipstream
   def handle_info({:job_event, id, event, detail}, socket) do
     {:noreply, forward(socket, "job_event", %{"job" => id, "event" => event, "detail" => detail})}
   end
@@ -315,6 +335,23 @@ defmodule Orbitorc.Agent.Link do
          {:ok, spec, manifest} <- Config.fetch_project(config, payload["project"]),
          {:ok, target} <- required(payload, "target") do
       Command.build(spec.repo, manifest.sync, target)
+    end
+  end
+
+  # A box with a job running refuses: an exit mid-job would reap it, and a measurement reaped by its
+  # own harness is the confident wrong answer this whole system exists to prevent.
+  defp do_upgrade(caller, payload) do
+    with :ok <- Leases.authorize(caller, :mutate),
+         :ok <- nothing_running(),
+         {:ok, url} <- required(payload, "url") do
+      Orbitorc.Agent.Upgrade.stage(url, Map.get(payload, "sha256"))
+    end
+  end
+
+  defp nothing_running do
+    case Jobs.list() do
+      [] -> :ok
+      jobs -> {:error, "#{length(jobs)} job(s) running here; an upgrade waits for a quiet box"}
     end
   end
 

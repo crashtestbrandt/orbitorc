@@ -7,6 +7,14 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Added
+
+- `upgrade`: replace an agent with a release, from the command line (`orbitorc upgrade v0.2.0 --all`)
+  or the dashboard. The box fetches the archive CI attached for its platform, verifies the checksum
+  beside it, swaps and exits; its service manager restarts it. A box with a job running refuses.
+- The report carries `arch` and `agent_version`; the fleet page and `orbitorc fleet` show them.
+- CI attaches a `.sha256` beside every release archive.
+
 ## [0.1.0] - 2026-09-29
 
 The first release.

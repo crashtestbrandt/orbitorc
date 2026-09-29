@@ -17,7 +17,7 @@ defmodule OrbitorcWeb.FleetLive do
   alias Orbitorc.Fleet
   alias OrbitorcWeb.Verbs
 
-  @verbs ~w(fleet doctor sync)
+  @verbs ~w(fleet doctor sync upgrade)
   @doc "The verbs this page runs; the parity test reads it."
   def verbs, do: @verbs
 
@@ -32,6 +32,8 @@ defmodule OrbitorcWeb.FleetLive do
        page_title: "Fleet",
        sync: %{"project" => first_project(boxes), "revision" => "main", "box" => ""},
        sync_result: nil,
+       upgrade: %{"release" => "", "box" => ""},
+       upgrade_result: nil,
        busy: nil,
        error: nil
      )}
@@ -63,6 +65,33 @@ defmodule OrbitorcWeb.FleetLive do
      |> run_async(:sync, "sync", payload)}
   end
 
+  def handle_event("upgrade_form", params, socket) do
+    {:noreply, assign(socket, upgrade: Map.take(params, ["release", "box"]))}
+  end
+
+  # One box, or every box, each asked in turn; a box that refuses does not stop the others.
+  def handle_event("upgrade", params, socket) do
+    form = Map.take(params, ["release", "box"])
+
+    names =
+      if form["box"] in [nil, ""],
+        do: Enum.map(socket.assigns.boxes, & &1.name),
+        else: [form["box"]]
+
+    caller = socket.assigns.caller
+
+    {:noreply,
+     socket
+     |> assign(upgrade: form, upgrade_result: nil, error: nil, busy: :upgrade)
+     |> start_async(:upgrade, fn ->
+       {:ok,
+        Map.new(
+          names,
+          &{&1, Verbs.run("upgrade", %{"box" => &1, "release" => form["release"]}, caller)}
+        )}
+     end)}
+  end
+
   # A fresh report, taken from the box rather than the fleet's cache; the fleet learns it too.
   def handle_event("doctor", %{"box" => name}, socket) do
     {:noreply,
@@ -72,6 +101,10 @@ defmodule OrbitorcWeb.FleetLive do
   @impl true
   def handle_async(:sync, {:ok, {:ok, result}}, socket) do
     {:noreply, assign(socket, sync_result: result, busy: nil)}
+  end
+
+  def handle_async(:upgrade, {:ok, {:ok, results}}, socket) do
+    {:noreply, assign(socket, upgrade_result: results, busy: nil)}
   end
 
   def handle_async({:doctor, _name}, {:ok, {:ok, _report}}, socket) do
@@ -201,6 +234,54 @@ defmodule OrbitorcWeb.FleetLive do
         </div>
       </section>
 
+      <section :if={@boxes != []} class="rounded border border-zinc-200 p-4">
+        <h2 class="mb-2 text-lg font-medium">Upgrade agents</h2>
+        <p class="mb-3 text-sm text-zinc-600">
+          A release tag (<code>v0.2.0</code>) or an archive URL. Each box fetches, verifies the
+          checksum, swaps and exits; its service manager brings the new release up. A box with a job
+          running refuses.
+        </p>
+        <form
+          id="upgrade-form"
+          phx-change="upgrade_form"
+          phx-submit="upgrade"
+          class="flex flex-wrap items-end gap-3 text-sm"
+        >
+          <label class="flex flex-col gap-1">
+            <span class="text-zinc-500">Release</span>
+            <input
+              name="release"
+              value={@upgrade["release"]}
+              placeholder="v0.2.0"
+              class="w-48 rounded border border-zinc-300 px-2 py-1 font-mono"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-zinc-500">Box</span>
+            <select name="box" class="rounded border border-zinc-300 px-2 py-1">
+              <option value="" selected={@upgrade["box"] == ""}>every box</option>
+              <option :for={b <- @boxes} value={b.name} selected={b.name == @upgrade["box"]}>
+                {b.name}
+              </option>
+            </select>
+          </label>
+          <button
+            class="rounded border border-zinc-800 bg-zinc-800 px-3 py-1 text-white disabled:opacity-40"
+            disabled={is_nil(@caller) or @busy == :upgrade or @upgrade["release"] == ""}
+          >
+            {if @busy == :upgrade, do: "Upgrading…", else: "Upgrade"}
+          </button>
+        </form>
+        <table :if={@upgrade_result} class="mt-4 w-full text-sm">
+          <tbody>
+            <tr :for={{box, result} <- Enum.sort(@upgrade_result)} class="border-t border-zinc-100">
+              <td class="py-1 font-medium">{box}</td>
+              <td class={upgrade_class(result)}>{upgrade_line(result)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <ul class="space-y-3">
         <li :for={box <- @boxes} class="rounded border border-zinc-200 p-4">
           <div class="flex items-baseline justify-between">
@@ -208,7 +289,10 @@ defmodule OrbitorcWeb.FleetLive do
               {box.name}
             </.link>
             <span class="flex items-center gap-3 text-sm text-zinc-500">
-              {box.platform}
+              {box.platform}{if box.report["arch"], do: "/#{box.report["arch"]}", else: ""}
+              <span :if={box.report["agent_version"]} class="font-mono">
+                agent {box.report["agent_version"]}
+              </span>
               <button
                 phx-click="doctor"
                 phx-value-box={box.name}
@@ -257,6 +341,14 @@ defmodule OrbitorcWeb.FleetLive do
     </Layouts.app>
     """
   end
+
+  defp upgrade_line({:ok, %{"version" => version}}), do: "#{version} staged; restarting"
+  defp upgrade_line({:ok, other}), do: inspect(other)
+  defp upgrade_line({:error, {_status, reason}}), do: "refused: #{reason}"
+  defp upgrade_line({:error, reason}), do: "refused: #{reason}"
+
+  defp upgrade_class({:ok, _}), do: "text-emerald-700"
+  defp upgrade_class(_), do: "text-red-700"
 
   defp agreement_line(%{agreed: true, revisions: [sha]}), do: "every box agrees on #{sha}"
 

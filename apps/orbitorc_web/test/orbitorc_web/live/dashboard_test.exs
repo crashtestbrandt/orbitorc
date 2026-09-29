@@ -49,6 +49,15 @@ defmodule OrbitorcWeb.DashboardTest do
     assert render_async(view) =~ "every box agrees on feedface"
   end
 
+  test "the fleet page upgrades every box and reports each", %{named: conn} do
+    {:ok, view, html} = live(conn, ~p"/")
+    assert html =~ "agent 0.1.0"
+
+    view |> form("#upgrade-form", %{"release" => "v0.2.0", "box" => ""}) |> render_submit()
+    assert_receive {:asked, "alpha", "upgrade", %{"version" => "v0.2.0"}}
+    assert render_async(view) =~ "0.2.0 staged; restarting"
+  end
+
   test "the fleet page asks a box for a fresh report", %{named: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
     view |> element("button[phx-click=doctor][phx-value-box=alpha]") |> render_click()

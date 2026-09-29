@@ -23,6 +23,7 @@ defmodule Orbitorc.CLI do
       orbitorc verdict 3 orbitnet --box win
       orbitorc run orbitnet --measure 30 --load-per-box 4 --wait
       orbitorc runs                                 live runs, then history
+      orbitorc upgrade v0.2.0 --all                 every agent to a release; each swaps and restarts
       orbitorc run-status ID
 
   ## Targets
@@ -72,6 +73,7 @@ defmodule Orbitorc.CLI do
     force: :boolean,
     window: :string,
     ttl: :integer,
+    sha256: :string,
     wait: :boolean,
     id: :integer
   ]
@@ -280,6 +282,16 @@ defmodule Orbitorc.CLI do
       other -> show(other, opts, fn %{"id" => id} -> "run #{id} started; follow it with: orbitorc run-status #{id}" end)
     end
   end
+
+  defp dispatch(["upgrade", release | _], opts) do
+    body = %{"release" => release} |> put_if(opts[:sha256], "sha256", opts[:sha256])
+
+    fan_out(opts, :every_box, fn box -> post("/api/box/#{box}/upgrade", body, opts) end)
+    |> show_each(opts, fn v -> "#{v["version"]} staged (swap #{v["swap"]}); #{v["restart"]}" end)
+  end
+
+  defp dispatch(["upgrade" | _], _opts),
+    do: {:error, "usage: orbitorc upgrade <tag or URL> [--box NAME | --all] [--sha256 HEX]"}
 
   defp dispatch(["runs" | _], opts) do
     get("/api/runs", %{}, opts)
@@ -496,7 +508,7 @@ defmodule Orbitorc.CLI do
         |> Enum.map_join("\n", fn {name, report} -> "      #{name}  #{short_sha(report)}#{flags(report)}" end)
 
       problems = if (box["problems"] || []) == [], do: "", else: "\n    problems " <> Enum.join(box["problems"], "; ")
-      "  #{box["name"]}  #{box["platform"]}#{if box["session_ok"], do: "", else: "  [no graphical session]"}\n    lan     #{box["lan"] || "—"}\n    session #{box["session"]}\n#{projects}#{problems}"
+      "  #{box["name"]}  #{box["platform"]}#{if box["arch"], do: "/#{box["arch"]}", else: ""}#{if box["version"], do: "  agent #{box["version"]}", else: ""}#{if box["session_ok"], do: "", else: "  [no graphical session]"}\n    lan     #{box["lan"] || "—"}\n    session #{box["session"]}\n#{projects}#{problems}"
     end)
   end
 

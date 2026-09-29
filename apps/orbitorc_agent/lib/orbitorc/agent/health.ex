@@ -29,6 +29,8 @@ defmodule Orbitorc.Agent.Health do
 
     %{
       "platform" => Atom.to_string(Platform.kind()),
+      "arch" => Platform.arch(),
+      "agent_version" => version(),
       "session_ok" => session_ok,
       "session_detail" => session_detail,
       "lan" => Platform.lan_address(),
@@ -73,6 +75,8 @@ defmodule Orbitorc.Agent.Health do
         true
     end
   end
+
+  defp version, do: to_string(Application.spec(:orbitorc_agent, :vsn) || "dev")
 
   defp tools do
     Map.new(["git", "just", "curl"], &{&1, Platform.tool?(&1)})

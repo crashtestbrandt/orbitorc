@@ -35,4 +35,4 @@ config :phoenix,
 config :orbitorc_web, agent_tokens: %{"testbox" => "test-token"}
 
 # The agent starts idle under test. Every test that needs a job registry starts its own.
-config :orbitorc_agent, autostart: false
+config :orbitorc_agent, autostart: false, exit_on_upgrade: false

@@ -124,6 +124,47 @@ defmodule Orbitorc.Agent.LinkTest do
     assert Process.alive?(pid)
   end
 
+  test "AN UPGRADE NEEDS THE LEASE AND A RELEASE TO RUN FROM; either refusal leaves the link up",
+       %{
+         pid: pid
+       } do
+    push(Link, "agent", "upgrade", %{
+      "ref" => "r1",
+      "caller" => "t",
+      "url" => "https://x.invalid/a"
+    })
+
+    assert_push(
+      "agent",
+      "reply",
+      %{"ref" => "r1", "result" => %{"ok" => false, "error" => without_lease}},
+      _,
+      @timeout
+    )
+
+    assert without_lease =~ "lease"
+
+    push(Link, "agent", "lease", %{"ref" => "r2", "caller" => "t", "action" => "claim"})
+    assert_push("agent", "reply", %{"ref" => "r2", "result" => %{"ok" => true}}, _, @timeout)
+
+    push(Link, "agent", "upgrade", %{
+      "ref" => "r3",
+      "caller" => "t",
+      "url" => "https://x.invalid/a"
+    })
+
+    assert_push(
+      "agent",
+      "reply",
+      %{"ref" => "r3", "result" => %{"ok" => false, "error" => not_a_release}},
+      _,
+      @timeout
+    )
+
+    assert not_a_release =~ "not running from a release"
+    assert Process.alive?(pid)
+  end
+
   test "a job event on the box is forwarded up the link" do
     Phoenix.PubSub.broadcast(
       Orbitorc.PubSub,

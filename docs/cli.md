@@ -31,6 +31,7 @@ special, and it runs from anywhere.
 | `run PROJECT [--measure S] [--link MODE] [--load-per-box N] [--authority-box NAME] [--load-box NAME …] [--seed N] [--allow-colocated] [--wait]` | takes its own | A whole fleet run. `--wait` follows it to its verdict. |
 | `run-status ID` | | A run's snapshot and timeline. |
 | `runs` | | Live runs, then history. |
+| `upgrade TAG\|URL --box NAME\|--all [--sha256 HEX]` | yes | Replace each agent with a release: fetched, verified against its checksum, swapped, restarted by its service manager. A box with a job running refuses. |
 
 ## Targets
 
