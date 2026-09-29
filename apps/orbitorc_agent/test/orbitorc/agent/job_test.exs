@@ -31,6 +31,20 @@ defmodule Orbitorc.Agent.JobTest do
     end
   end
 
+  defp wait_until(pred, left \\ 40) do
+    cond do
+      pred.() ->
+        :ok
+
+      left == 0 ->
+        flunk("condition never held")
+
+      true ->
+        Process.sleep(50)
+        wait_until(pred, left - 1)
+    end
+  end
+
   defp alive?(os_pid),
     do:
       match?(
@@ -69,7 +83,10 @@ defmodule Orbitorc.Agent.JobTest do
     {:ok, id, _} = Jobs.launch(argv_builder: builder, marker: "UP", caller: "t")
 
     assert_receive {:job_event, ^id, "exited", %{"status" => 3, "ready" => true}}, 3_000
-    Process.sleep(50)
+
+    # The event is announced before the owner stops; the registry forgets it only once it has. Wait
+    # for that rather than sleeping a fixed time a loaded runner may exceed.
+    wait_until(fn -> not Jobs.alive?(id) end)
 
     # The process is gone; the record is not. A bench client self-terminates, and its results are read
     # after that, so a registry that only knew live jobs would lose every result worth reading.

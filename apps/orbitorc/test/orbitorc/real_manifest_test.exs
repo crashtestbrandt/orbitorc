@@ -240,9 +240,11 @@ defmodule Orbitorc.RealManifestTest do
     defp sibling_root do
       File.cwd!()
       |> Path.expand()
+      # Up to the filesystem root, which is the directory that is its own parent: `/` on Unix, `D:/` on
+      # Windows. A loop that only knew `/` never ended on a Windows runner.
       |> Stream.unfold(fn
-        "/" -> nil
-        dir -> {dir, Path.dirname(dir)}
+        nil -> nil
+        dir -> {dir, if(Path.dirname(dir) == dir, do: nil, else: Path.dirname(dir))}
       end)
       |> Enum.find(fn dir -> Enum.any?(@siblings, &File.dir?(Path.join(dir, &1))) end)
     end
