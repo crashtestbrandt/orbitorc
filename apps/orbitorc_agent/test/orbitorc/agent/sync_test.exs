@@ -39,7 +39,9 @@ defmodule Orbitorc.Agent.SyncTest do
         "schema" => 1,
         "project" => "p",
         "modes" => %{"smoke" => %{}},
-        "sync" => %{"import" => true}
+        # The stand-in engine is a shell script, which only a Unix box can run; on Windows the
+        # manifest asks for no import and the reply says so.
+        "sync" => %{"import" => match?({:unix, _}, :os.type())}
       })
     )
 
@@ -114,6 +116,8 @@ defmodule Orbitorc.Agent.SyncTest do
     if match?({:unix, _}, :os.type()) do
       assert %{"ok" => true, "passes" => 2} = synced["import"]
       assert File.exists?(Path.join([ctx.checkout, ".godot", "global_script_class_cache.cfg"]))
+    else
+      assert %{"ok" => true, "skipped" => _} = synced["import"]
     end
 
     # After: the manifest the sync brought is served, the problem is gone, and the box re-reported.
