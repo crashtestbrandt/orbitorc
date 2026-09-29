@@ -1,5 +1,12 @@
 import Config
 
+dev_ip = fn ->
+  case System.get_env("PHX_IP") do
+    nil -> {0, 0, 0, 0}
+    ip -> ip |> String.to_charlist() |> :inet.parse_address() |> elem(1)
+  end
+end
+
 # Configure your database
 config :orbitorc, Orbitorc.Repo,
   database: Path.expand("../orbitorc_dev.db", __DIR__),
@@ -16,7 +23,10 @@ config :orbitorc, Orbitorc.Repo,
 config :orbitorc_web, OrbitorcWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  # Every interface, not loopback. A control plane that only its own machine can reach has no fleet:
+  # the point of a development run is an agent on another box dialing in. `PHX_IP=127.0.0.1` binds
+  # loopback again when nothing should.
+  http: [ip: dev_ip.()],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
