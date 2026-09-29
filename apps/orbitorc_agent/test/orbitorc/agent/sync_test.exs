@@ -67,6 +67,10 @@ defmodule Orbitorc.Agent.SyncTest do
       )
 
     assert problem =~ "p:"
+    # Nothing another module launched may still be flushing log lines onto the shared topic.
+    for {_, pid, _, _} <- DynamicSupervisor.which_children(Orbitorc.Agent.JobSupervisor),
+        do: DynamicSupervisor.terminate_child(Orbitorc.Agent.JobSupervisor, pid)
+
     :sys.replace_state(Orbitorc.Agent.Leases, fn _ -> Orbitorc.Lease.new() end)
     start_supervised!({Jobs, root: Path.join(tmp, "jobs"), retention: 5})
     pid = start_supervised!({Link, config: config, problems: [problem], test_mode?: true})

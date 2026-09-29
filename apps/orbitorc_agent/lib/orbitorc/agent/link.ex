@@ -264,8 +264,14 @@ defmodule Orbitorc.Agent.Link do
   # caller read a description of a tree that no longer exists.
   @impl Slipstream
   def handle_info(:rereport, socket) do
-    report = Health.report(socket.assigns.config, socket.assigns.problems)
-    {:noreply, forward(socket, "report", %{"report" => report})}
+    case guarded(fn -> {:ok, Health.report(socket.assigns.config, socket.assigns.problems)} end) do
+      {:ok, report} ->
+        {:noreply, forward(socket, "report", %{"report" => report})}
+
+      {:error, reason} ->
+        Logger.warning("orbitorc: could not re-report: #{reason}")
+        {:noreply, socket}
+    end
   end
 
   @impl Slipstream

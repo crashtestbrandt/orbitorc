@@ -17,6 +17,7 @@ defmodule Orbitorc.Agent.JobTest do
   end
 
   setup do
+    on_exit(&end_every_job/0)
     root = Path.join(System.tmp_dir!(), "orbitorc-jobs-#{System.unique_integer([:positive])}")
     start_supervised!({Jobs, root: root, retention: 5})
     Phoenix.PubSub.subscribe(Orbitorc.PubSub, Jobs.topic())
@@ -133,5 +134,24 @@ defmodule Orbitorc.Agent.JobTest do
 
     {:ok, second, _} = Jobs.launch(argv_builder: long_lived("UP"), marker: "UP", caller: "t")
     assert second > first
+  end
+
+  # Jobs are children of the application's own supervisor, not of the test's registry, so a job a test
+  # launched outlives the test unless it is ended here -- and a leftover job's last log line, flushed
+  # onto the shared topic while another module's link is up, is a push that module's test never
+  # consumes, which in Slipstream's test mode blocks that link until it times out.
+  defp end_every_job do
+    Orbitorc.Agent.JobSupervisor
+    |> DynamicSupervisor.which_children()
+    |> Enum.each(fn {_, pid, _, _} ->
+      ref = Process.monitor(pid)
+      DynamicSupervisor.terminate_child(Orbitorc.Agent.JobSupervisor, pid)
+
+      receive do
+        {:DOWN, ^ref, _, _, _} -> :ok
+      after
+        2_000 -> :ok
+      end
+    end)
   end
 end
