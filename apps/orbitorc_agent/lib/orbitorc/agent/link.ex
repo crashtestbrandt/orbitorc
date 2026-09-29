@@ -157,7 +157,27 @@ defmodule Orbitorc.Agent.Link do
     caller = caller(payload)
     result = guarded(fn -> do_sync(socket.assigns.config, caller, payload) end)
     Audit.record(caller, "sync", Map.take(payload, ["project", "revision"]), result)
+
+    # The tree is not the one the agent started with. What it declares is re-read now, so a manifest
+    # the sync brought is served at once -- the re-report that follows describes this tree, not the
+    # old one -- and a project whose manifest went away stops being launchable.
+    socket =
+      case result do
+        {:ok, _} -> reload_manifest(socket, payload["project"])
+        _ -> socket
+      end
+
     reply(socket, payload, normalize(result))
+  end
+
+  defp reload_manifest(socket, name) do
+    {config, problem} = Config.reload_manifest(socket.assigns.config, name)
+    problems = Enum.reject(socket.assigns.problems, &String.starts_with?(&1, "#{name}: "))
+
+    assign(socket,
+      config: config,
+      problems: if(problem, do: problems ++ [problem], else: problems)
+    )
   end
 
   @impl Slipstream
@@ -273,7 +293,7 @@ defmodule Orbitorc.Agent.Link do
 
   defp do_sync(config, caller, payload) do
     with :ok <- Leases.authorize(caller, :mutate),
-         {:ok, spec, _manifest} <- Config.fetch_project(config, payload["project"]),
+         {:ok, spec} <- Config.fetch_spec(config, payload["project"]),
          {:ok, revision} <- required(payload, "revision") do
       case Command.sync(spec.repo, revision) do
         {:ok, report} ->
