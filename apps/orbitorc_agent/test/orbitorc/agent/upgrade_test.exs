@@ -117,14 +117,23 @@ defmodule Orbitorc.Agent.UpgradeTest do
     write_release(Path.join(src, "orbitorc_agent"), version)
     path = Path.join(tmp, "agent.tar.gz")
 
-    files =
-      Path.wildcard(Path.join(src, "orbitorc_agent/**"), match_dot: true)
-      |> Enum.filter(&File.regular?/1)
-      |> Enum.map(&{String.to_charlist(Path.relative_to(&1, src)), String.to_charlist(&1)})
-
+    # Walked rather than globbed: on Windows the temp directory is an 8.3 short name, and a glob
+    # answers the long form, which relative_to cannot strip.
+    files = files_under(Path.join(src, "orbitorc_agent"), "orbitorc_agent")
     :ok = :erl_tar.create(String.to_charlist(path), files, [:compressed])
     archive = File.read!(path)
     {archive, :crypto.hash(:sha256, archive) |> Base.encode16(case: :lower)}
+  end
+
+  defp files_under(dir, prefix) do
+    Enum.flat_map(File.ls!(dir), fn name ->
+      full = Path.join(dir, name)
+      rel = Path.join(prefix, name)
+
+      if File.dir?(full),
+        do: files_under(full, rel),
+        else: [{String.to_charlist(rel), String.to_charlist(full)}]
+    end)
   end
 
   defp version_at(root) do

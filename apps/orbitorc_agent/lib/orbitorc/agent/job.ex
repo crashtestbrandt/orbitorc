@@ -83,7 +83,13 @@ defmodule Orbitorc.Agent.Job do
           env: env_for(Keyword.get(opts, :env, %{}))
         ])
 
-      os_pid = port |> Port.info(:os_pid) |> elem(1)
+      # A process that exits within milliseconds can be gone before it is asked for its pid; the port
+      # then answers nil, and the job goes on to read the exit status it is about to receive.
+      os_pid =
+        case Port.info(port, :os_pid) do
+          {:os_pid, pid} -> pid
+          _ -> nil
+        end
 
       state = %{
         id: Keyword.fetch!(opts, :id),
