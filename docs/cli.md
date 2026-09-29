@@ -28,7 +28,7 @@ special, and it runs from anywhere.
 | `shot JOB --box NAME [--window HINT]` | yes | Capture one window. Never the screen. |
 | `pull JOB --box NAME [--file NAME] [--out DIR]` | | Fetch an artifact to where you are standing. |
 | `verdict JOB PROJECT --box NAME` | | Did that job measure anything. |
-| `run PROJECT [--measure S] [--link MODE] [--load-per-box N] [--authority-box NAME] [--load-box NAME …] [--seed N] [--allow-colocated] [--wait]` | takes its own | A whole fleet run. `--wait` follows it to its verdict. |
+| `run PROJECT [--authority-mode MODE] [--load-mode MODE] [--measure S] [--link MODE] [--load-per-box N] [--authority-box NAME] [--load-box NAME …] [--seed N] [--allow-colocated] [--wait]` | takes its own | A whole fleet run. `--wait` follows it to its verdict. The authority mode defaults to `server` and the load mode to `bench`; a project whose manifest names them differently says so here. |
 | `run-status ID` | | A run's snapshot and timeline. |
 | `runs` | | Live runs, then history. |
 | `upgrade TAG\|URL --box NAME\|--all [--sha256 HEX]` | yes | Replace each agent with a release: fetched, verified against its checksum, swapped, restarted by its service manager. A box with a job running refuses. |
