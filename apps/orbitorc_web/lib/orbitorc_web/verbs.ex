@@ -146,9 +146,10 @@ defmodule OrbitorcWeb.Verbs do
 
   defp do_run("stop", params, caller) do
     with {:ok, box} <- required(params, "box") do
+      # An id arrives as a number from the command line's JSON and as a string from a page's button.
       opts =
         []
-        |> then(&if present?(params["id"]), do: [{:id, to_int(params["id"], 0)} | &1], else: &1)
+        |> then(&if given?(params["id"]), do: [{:id, to_int(params["id"], 0)} | &1], else: &1)
         |> then(&if truthy?(params["all"]), do: [{:all, true} | &1], else: &1)
         |> then(&if truthy?(params["force"]), do: [{:force, true} | &1], else: &1)
 
@@ -285,6 +286,7 @@ defmodule OrbitorcWeb.Verbs do
   end
 
   defp present?(value), do: is_binary(value) and value != ""
+  defp given?(value), do: is_integer(value) or present?(value)
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
 

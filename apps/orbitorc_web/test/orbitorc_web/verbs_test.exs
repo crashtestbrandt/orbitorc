@@ -67,6 +67,18 @@ defmodule OrbitorcWeb.VerbsTest do
     assert {:error, "ghost is not connected"} = Verbs.run("status", %{"box" => "ghost"}, nil)
   end
 
+  test "A JOB ID IS A NUMBER FROM THE COMMAND LINE AND A STRING FROM A PAGE, and stop takes both" do
+    pid = OrbitorcWeb.FakeBox.start("beta")
+    on_exit(fn -> OrbitorcWeb.FakeBox.leave(pid) end)
+
+    assert {:ok, _} = Verbs.run("stop", %{"box" => "beta", "id" => 3}, "t")
+    assert_receive {:asked, "beta", "stop", %{"id" => 3}}
+    assert {:ok, _} = Verbs.run("stop", %{"box" => "beta", "id" => "4"}, "t")
+    assert_receive {:asked, "beta", "stop", %{"id" => 4}}
+    assert {:ok, _} = Verbs.run("stop", %{"box" => "beta", "all" => true}, "t")
+    assert_receive {:asked, "beta", "stop", %{"all" => true}}
+  end
+
   test "a numeric-looking parameter is coerced, the rest left alone" do
     assert Verbs.coerce("47900") == 47_900
     assert Verbs.coerce("1.5") == 1.5
