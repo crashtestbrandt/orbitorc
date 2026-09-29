@@ -59,6 +59,16 @@ nothing and reports success.** That is the failure the install scripts exist to 
 A box with no display at all is still useful — a sync, a build and a headless authority are all valid
 there. It reports "headless modes only" and refuses the rendering ones.
 
+## A control plane that outlives a terminal
+
+`mix phx.server` is the development control plane. For one that runs unattended, `install/macos-control-plane.sh <release dir>`
+installs the `orbitorc` release as a LaunchAgent; its environment lives in
+`~/Library/Application Support/orbitorc/control-plane.env` (`ORBITORC_AGENT_TOKENS`, `PHX_HOST`, `PORT`,
+`DATABASE_PATH`; `SECRET_KEY_BASE` is generated once). **`PHX_HOST` is the name or address the dashboard is
+opened at**: a browser's socket carries that origin and the endpoint refuses any other, so a control plane
+opened at its LAN address without it refuses every dashboard socket. On Linux the same release runs under
+a systemd unit with the same environment; the file limit matters there too (launchd gives 256).
+
 ## Getting the release
 
 | | |
