@@ -62,17 +62,29 @@ defmodule Orbitorc.Agent.Command do
 
   The revision is reported back rather than assumed, so a fleet can be checked for agreement instead of
   trusted to have it.
+
+  ## A branch name means the remote's branch
+
+  `sync main` checks out `origin/main`, detached. A box's local `main` is whatever it last checked out
+  and never moves on its own, so a checkout of the local branch after a fetch would report success and
+  leave the fleet where it was. A sha or a tag is itself.
   """
   @spec sync(Path.t(), String.t(), keyword()) :: {:ok, map()} | {:error, String.t()}
   def sync(repo, revision, opts \\ []) do
-    steps = [
-      ["git", "fetch", "--all", "--prune", "--tags"],
-      ["git", "checkout", "--force", revision],
-      ["git", "reset", "--hard", "HEAD"]
-    ]
+    with {:ok, fetched} <- run_all([["git", "fetch", "--all", "--prune", "--tags"]], repo, opts),
+         target = remote_or_itself(repo, revision, opts),
+         steps = [["git", "checkout", "--force", target], ["git", "reset", "--hard", "HEAD"]],
+         {:ok, log} <- run_all(steps, repo, opts) do
+      {:ok, Map.put(Orbitorc.Agent.Health.revision(repo), "log", fetched <> log)}
+    end
+  end
 
-    with {:ok, log} <- run_all(steps, repo, opts) do
-      {:ok, Map.put(Orbitorc.Agent.Health.revision(repo), "log", log)}
+  defp remote_or_itself(repo, revision, opts) do
+    verify = ["git", "rev-parse", "--verify", "--quiet", "refs/remotes/origin/#{revision}"]
+
+    case run(verify, repo, opts) do
+      {:ok, %{status: 0}} -> "origin/#{revision}"
+      _ -> revision
     end
   end
 

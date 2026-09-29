@@ -65,6 +65,31 @@ defmodule Orbitorc.Agent.ConfigTest do
     assert msg =~ "no usable orbitorc.json"
   end
 
+  test "A SYNC NEEDS NO MANIFEST: the spec is fetched alone, and the manifest reloaded after", %{
+    dir: dir
+  } do
+    repo = Path.join(dir, "fresh")
+    File.mkdir_p!(repo)
+    {:ok, config, [_]} = Config.load(write_config(dir, [%{"name" => "fresh", "repo" => repo}]))
+
+    assert {:error, _} = Config.fetch_project(config, "fresh")
+    assert {:ok, spec} = Config.fetch_spec(config, "fresh")
+    assert spec.repo == Path.expand(repo)
+    assert {:error, msg} = Config.fetch_spec(config, "other")
+    assert msg =~ "it serves fresh"
+
+    # The manifest arrives (a sync brought it); a reload serves it without a restart.
+    write_manifest(repo)
+    assert {config, nil} = Config.reload_manifest(config, "fresh")
+    assert {:ok, _, %{project: "p"}} = Config.fetch_project(config, "fresh")
+
+    # And goes again (a sync moved to a revision without one); the reload says so.
+    File.rm!(Path.join(repo, Orbitorc.Manifest.manifest_name()))
+    assert {config, problem} = Config.reload_manifest(config, "fresh")
+    assert problem =~ "fresh:"
+    assert {:error, _} = Config.fetch_project(config, "fresh")
+  end
+
   test "an unknown project names what the box does serve", %{dir: dir} do
     repo = Path.join(dir, "p")
     write_manifest(repo)

@@ -180,8 +180,45 @@ defmodule Orbitorc.Agent.Config do
          "#{name} is configured here but its checkout carries no usable #{Orbitorc.Manifest.manifest_name()}"}
 
       _ ->
-        served = config.projects |> Map.keys() |> Enum.sort() |> Enum.join(", ")
-        {:error, "this box serves no project #{inspect(name)} (it serves #{served})"}
+        {:error, serves_no(config, name)}
     end
+  end
+
+  @doc """
+  The project spec alone, for a verb that needs the checkout and not what it declares.
+
+  A sync is the one that must work before there is a manifest: it is how a fresh checkout gets one.
+  Requiring the manifest there left a new box unable to fetch the file that would have satisfied
+  the requirement.
+  """
+  @spec fetch_spec(t(), String.t()) :: {:ok, map()} | {:error, String.t()}
+  def fetch_spec(%__MODULE__{} = config, name) do
+    case Map.fetch(config.projects, name) do
+      {:ok, spec} -> {:ok, spec}
+      :error -> {:error, serves_no(config, name)}
+    end
+  end
+
+  @doc """
+  Re-read one project's manifest from its checkout.
+
+  After a sync the tree is not the one the agent started with: a manifest may have appeared, changed
+  or gone. The result is the configuration with that project's manifest as the checkout has it now,
+  and the problem to report when it has none.
+  """
+  @spec reload_manifest(t(), String.t()) :: {t(), String.t() | nil}
+  def reload_manifest(%__MODULE__{} = config, name) do
+    with {:ok, spec} <- fetch_spec(config, name),
+         {:ok, manifest} <- Orbitorc.Manifest.load(spec.repo) do
+      {%{config | manifests: Map.put(config.manifests, name, manifest)}, nil}
+    else
+      {:error, reason} ->
+        {%{config | manifests: Map.delete(config.manifests, name)}, "#{name}: #{reason}"}
+    end
+  end
+
+  defp serves_no(config, name) do
+    served = config.projects |> Map.keys() |> Enum.sort() |> Enum.join(", ")
+    "this box serves no project #{inspect(name)} (it serves #{served})"
   end
 end
