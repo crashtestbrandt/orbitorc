@@ -29,7 +29,9 @@ defmodule Orbitorc.Umbrella.MixProject do
       ],
       orbitorc_agent: [
         applications: [orbitorc_agent: :permanent],
-        include_executables_for: [:unix, :windows]
+        include_executables_for: [:unix, :windows],
+        # No distribution and no epmd for the agent: rel/orbitorc_agent/ says why.
+        rel_templates_path: "rel/orbitorc_agent"
       ]
     ]
   end

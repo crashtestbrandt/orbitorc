@@ -64,9 +64,14 @@ defmodule Orbitorc.Agent.UpgradeTest do
     body = File.read!(script)
 
     # The module works on the expanded root (on Windows that is `c:/…`, whatever the test was given).
-    root = Path.expand(ctx.root)
+    root = Upgrade.win_path(Path.expand(ctx.root))
     assert body =~ "Wait-Process -Id 4242"
-    assert body =~ "Move-Item -Path '#{root}' -Destination '#{root}.old'"
+
+    # Whatever still runs out of the release is stopped first (an epmd outlived the first release and
+    # held the directory), each move is checked, and a failed swap is logged rather than claimed.
+    assert body =~ "Stop-Process"
+    assert body =~ "Move-Item -Path '#{root}' -Destination '#{root}.old' -ErrorAction Stop"
+    assert body =~ "SWAP FAILED"
     assert body =~ "Start-ScheduledTask -TaskName 'OrbitOrc Agent'"
     # Nothing moved yet: the running release is still the running release.
     assert version_at(ctx.root) == "0.1.0"
