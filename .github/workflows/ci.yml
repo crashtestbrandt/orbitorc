@@ -1,0 +1,111 @@
+# Every push and pull request: the three suites on the three platforms an agent runs on. Then, from the
+# same commit, the two releases and the command line as artifacts per platform -- a release must be
+# built on its target platform, and a box should not need Elixir installed to run an agent.
+#
+# On a tag, the same artifacts are attached to a GitHub release.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+env:
+  OTP_VERSION: "27.0"
+  ELIXIR_VERSION: "1.18.4"
+  MIX_ENV: test
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ matrix.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ matrix.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - run: mix format --check-formatted
+      # Each application's suite in its own directory: the domain needs no database, the agent none,
+      # and the control plane creates its own SQLite file through its test alias.
+      - run: mix test
+        working-directory: apps/orbitorc
+      - run: mix test
+        working-directory: apps/orbitorc_agent
+      - run: mix test
+        working-directory: apps/orbitorc_web
+
+  release:
+    name: release (${{ matrix.os }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      MIX_ENV: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+      - run: mix deps.get --only prod
+      - run: mix compile
+      # The agent: no Phoenix, no assets, no database. What ships to every box.
+      - run: mix release orbitorc_agent --overwrite
+      # The control plane, with its assets built in.
+      - run: mix assets.deploy
+        working-directory: apps/orbitorc_web
+      - run: mix release orbitorc --overwrite
+      # The command line as a standalone escript.
+      - run: mix escript.build
+        working-directory: apps/orbitorc_cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbitorc_agent-${{ runner.os }}-${{ runner.arch }}
+          path: _build/prod/rel/orbitorc_agent
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbitorc-${{ runner.os }}-${{ runner.arch }}
+          path: _build/prod/rel/orbitorc
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbitorc-cli-${{ runner.os }}-${{ runner.arch }}
+          path: apps/orbitorc_cli/orbitorc
+          if-no-files-found: error
+      # A tag attaches the same three, archived, to a release.
+      - if: startsWith(github.ref, 'refs/tags/v') && runner.os != 'Windows'
+        run: |
+          tar -C _build/prod/rel -czf orbitorc_agent-${{ runner.os }}-${{ runner.arch }}.tar.gz orbitorc_agent
+          tar -C _build/prod/rel -czf orbitorc-${{ runner.os }}-${{ runner.arch }}.tar.gz orbitorc
+          cp apps/orbitorc_cli/orbitorc orbitorc-cli-${{ runner.os }}-${{ runner.arch }}
+      - if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path _build/prod/rel/orbitorc_agent -DestinationPath orbitorc_agent-${{ runner.os }}-${{ runner.arch }}.zip
+          Compress-Archive -Path _build/prod/rel/orbitorc -DestinationPath orbitorc-${{ runner.os }}-${{ runner.arch }}.zip
+          Copy-Item apps/orbitorc_cli/orbitorc orbitorc-cli-${{ runner.os }}-${{ runner.arch }}
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            orbitorc_agent-*
+            orbitorc-*

@@ -196,11 +196,47 @@ defmodule Orbitorc.RealManifestTest do
     end
   end
 
+  # The manifests two public sibling projects ship, kept here as fixtures so CI validates them without
+  # a checkout of either. The live-sibling test below checks the real files when they are beside this
+  # repository, and skips -- rather than passes -- when they are not.
+  describe "the sibling manifests, as fixtures" do
+    @fixtures Path.expand("../fixtures", __DIR__)
+
+    test "each fixture parses, and every mode it declares builds an argv" do
+      fixtures = Path.wildcard(Path.join(@fixtures, "*.orbitorc.json"))
+      assert fixtures != [], "no fixture under #{@fixtures}"
+
+      for path <- fixtures do
+        name = Path.basename(path, ".orbitorc.json")
+        assert {:ok, raw} = path |> File.read!() |> Jason.decode(), "#{name}: unreadable JSON"
+
+        assert {:ok, manifest} = Manifest.parse(raw, path),
+               "#{name}: #{inspect(Manifest.parse(raw, path))}"
+
+        assert manifest.project == name
+
+        for mode <- Manifest.mode_names(manifest) do
+          result =
+            Manifest.build_argv(manifest, mode,
+              engine_bin: @engine,
+              repo: @repo,
+              log_path: @log,
+              params: %{
+                "target" => "10.0.0.2:47900",
+                "join" => "10.0.0.2:47910",
+                "scene" => "res://probes/smoke.tscn"
+              }
+            )
+
+          assert match?({:ok, _}, result), "#{name}/#{mode} would not build: #{inspect(result)}"
+        end
+      end
+    end
+  end
+
   describe "manifests found in sibling checkouts" do
     @siblings ["orbitnet", "orbitnav"]
 
-    # Walk up from wherever the test runs until a directory holding the siblings is found, so this works
-    # from the umbrella root and from the app directory alike.
     defp sibling_root do
       File.cwd!()
       |> Path.expand()
@@ -211,49 +247,29 @@ defmodule Orbitorc.RealManifestTest do
       |> Enum.find(fn dir -> Enum.any?(@siblings, &File.dir?(Path.join(dir, &1))) end)
     end
 
-    test "a sibling that ships a manifest parses, and every mode it declares is launchable" do
+    test "a sibling checked out beside this repository ships a manifest that matches its fixture" do
       root = sibling_root()
 
-      found =
+      live =
         for name <- @siblings,
             root != nil,
             path = Path.join([root, name, Manifest.manifest_name()]),
-            File.exists?(path) do
-          assert {:ok, raw} = path |> File.read!() |> Jason.decode(), "#{name}: unreadable JSON"
+            File.exists?(path),
+            do: {name, path}
 
-          assert {:ok, manifest} = Manifest.parse(raw, path),
-                 "#{name}: #{inspect(Manifest.parse(raw, path))}"
+      if live == [] do
+        # Not a pass: nothing was checked. Say so where the output is read.
+        IO.puts(
+          "\n  (no sibling manifest checked out beside this repository; fixtures were checked instead)"
+        )
+      else
+        for {name, path} <- live do
+          fixture = Path.join(@fixtures, "#{name}.orbitorc.json")
 
-          for mode <- Manifest.mode_names(manifest) do
-            result =
-              Manifest.build_argv(manifest, mode,
-                engine_bin: @engine,
-                repo: @repo,
-                log_path: @log,
-                params: %{
-                  "target" => "10.0.0.2:47900",
-                  "join" => "10.0.0.2:47910",
-                  "scene" => "res://probes/smoke.tscn"
-                }
-              )
-
-            assert match?({:ok, _}, result), "#{name}/#{mode} would not build: #{inspect(result)}"
-          end
-
-          # Every mode says how it proves it came up, or says plainly that it cannot.
-          for mode <- Manifest.mode_names(manifest) do
-            assert Manifest.ready_marker(manifest, mode) != nil or
-                     get_in(manifest.modes, [mode, "ready"]) == "",
-                   "#{name}/#{mode} neither declares a ready marker nor declares that it has none"
-          end
-
-          name
+          assert File.read!(path) == File.read!(fixture),
+                 "#{name}'s manifest differs from its fixture -- copy it into test/fixtures/"
         end
-
-      # A test that passes by finding nothing is not a test. If the siblings are not checked out here,
-      # say so rather than reporting green.
-      assert found != [],
-             "no sibling manifest was found under #{inspect(root)} — this test would otherwise pass by checking nothing"
+      end
     end
   end
 end

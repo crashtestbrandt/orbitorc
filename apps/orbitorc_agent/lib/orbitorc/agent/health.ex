@@ -86,7 +86,8 @@ defmodule Orbitorc.Agent.Health do
       "revision" => revision(spec.repo),
       "manifest" => manifest_report(config, name),
       "import" => import_freshness(config, name, spec),
-      "requires" => requirements(config, name, spec)
+      "requires" => requirements(config, name, spec),
+      "pinned" => pinned(config, name, spec)
     }
   end
 
@@ -139,13 +140,94 @@ defmodule Orbitorc.Agent.Health do
 
   # A declared requirement may be a file, or a directory that has to hold something. An empty directory
   # is the shape a cleaned build leaves behind, and it satisfies neither.
+  #
+  # **A Git LFS pointer is not the file it stands for.** A checkout made without LFS leaves a 130-byte
+  # text stub where a library should be, and the stub satisfies every existence check while the engine
+  # reports "invalid ELF header" or a nil facade three steps away. The stub's first line names itself,
+  # so it is read rather than measured.
   defp present?(path) do
     cond do
-      File.regular?(path) -> true
-      File.dir?(path) -> match?({:ok, [_ | _]}, File.ls(path))
+      File.regular?(path) -> not lfs_pointer?(path)
+      File.dir?(path) -> match?({:ok, [_ | _]}, File.ls(path)) and not any_pointer?(path)
       true -> Path.wildcard(path) != []
     end
   end
+
+  defp any_pointer?(dir) do
+    case File.ls(dir) do
+      {:ok, entries} ->
+        Enum.any?(entries, fn e ->
+          p = Path.join(dir, e)
+          File.regular?(p) and lfs_pointer?(p)
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  @doc "Whether a file is a Git LFS pointer stub rather than the content it stands for."
+  @spec lfs_pointer?(Path.t()) :: boolean()
+  def lfs_pointer?(path) do
+    case File.open(path, [:read, :binary], &IO.binread(&1, 64)) do
+      {:ok, head} when is_binary(head) -> String.starts_with?(head, "version https://git-lfs")
+      _ -> false
+    end
+  end
+
+  @doc """
+  Whether every installed backend is the one its lock pins.
+
+  A project that vendors a native backend as a pinned release records what it installed in a stamp
+  beside the library: the tag, then the lock file's own sha256. A box synced to one commit and then
+  moved to another whose lock names a different tag still holds the old libraries, and the failures
+  that produces look like anything except a stale library. Comparing the stamp against the lock names
+  exactly that drift, offline and without hashing a single byte of the library.
+
+  Declared under `checks.pinned` as `{"lock": path, "stamp": path}` pairs. A missing lock is not ok:
+  nothing then says what the installed library is.
+  """
+  @spec pinned(Config.t(), String.t(), map()) :: map()
+  def pinned(%Config{manifests: manifests}, name, spec) do
+    pairs =
+      case manifests |> Map.get(name) |> then(&(&1 && Map.get(&1.checks, "pinned"))) do
+        list when is_list(list) -> list
+        _ -> []
+      end
+
+    if pairs == [] do
+      %{"ok" => true, "detail" => "this project declares no pinned backend"}
+    else
+      results = Enum.map(pairs, &pin_state(spec.repo, &1))
+
+      case Enum.reject(results, &elem(&1, 0)) do
+        [] -> %{"ok" => true, "detail" => Enum.map_join(results, "; ", &elem(&1, 1))}
+        [{false, detail} | _] -> %{"ok" => false, "detail" => detail <> " — run sync"}
+      end
+    end
+  end
+
+  defp pin_state(repo, %{"lock" => lock, "stamp" => stamp}) do
+    lock_path = Path.join(repo, lock)
+    stamp_path = Path.join(repo, stamp)
+
+    with {:lock, {:ok, lock_bytes}} <- {:lock, File.read(lock_path)},
+         {:stamp, {:ok, stamp_text}} <- {:stamp, File.read(stamp_path)} do
+      want = :crypto.hash(:sha256, lock_bytes) |> Base.encode16(case: :lower)
+
+      case String.split(stamp_text) do
+        [tag, ^want | _] -> {true, "#{lock} pins #{tag}, and that is what is installed"}
+        [tag | _] -> {false, "#{stamp} says #{tag} is installed, which is not what #{lock} pins"}
+        [] -> {false, "#{stamp} is empty"}
+      end
+    else
+      {:lock, _} -> {false, "no #{lock} — nothing pins this backend"}
+      {:stamp, _} -> {false, "no #{stamp} — nothing records what is installed"}
+    end
+  end
+
+  defp pin_state(_repo, other),
+    do: {false, "a pinned entry needs lock and stamp: #{inspect(other)}"}
 
   defp engine(engine_bin) do
     case Platform.engine_version(engine_bin) do

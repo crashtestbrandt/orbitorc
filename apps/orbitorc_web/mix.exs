@@ -65,8 +65,6 @@ defmodule OrbitorcWeb.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:orbitorc, in_umbrella: true},
       {:jason, "~> 1.2"},
-      # The command line talks to the control plane over its own JSON API, like any other client.
-      {:req, "~> 0.5"},
       {:bandit, "~> 1.5"}
     ]
   end

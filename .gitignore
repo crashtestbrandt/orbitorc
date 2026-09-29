@@ -29,3 +29,6 @@ erl_crash.dump
 
 # Local development overrides: the tokens of real boxes, never committed.
 /config/dev.local.exs
+
+# The built escript.
+/apps/orbitorc_cli/orbitorc

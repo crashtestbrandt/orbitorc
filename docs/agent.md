@@ -59,9 +59,32 @@ nothing and reports success.** That is the failure the install scripts exist to 
 A box with no display at all is still useful — a sync, a build and a headless authority are all valid
 there. It reports "headless modes only" and refuses the rendering ones.
 
-Build the release on a machine of the target platform: `MIX_ENV=prod mix release orbitorc_agent`.
+## Getting the release
+
+| | |
+| --- | --- |
+| CI artifact | Every push builds `orbitorc_agent-<os>-<arch>` for Linux, macOS and Windows; a tag attaches the same to a GitHub release. A box needs nothing installed to run it — the release carries its own runtime. |
+| From a checkout | `MIX_ENV=prod mix release orbitorc_agent` on a machine of the target platform. Releases do not cross-compile. |
+| NixOS | `nix run .#agent`, or `nixosModules.agent` for the declarative form. A release built elsewhere does not run on NixOS, so this one is built by Nix from the checkout; `flake.nix` says how to fill the dependency hash on first build. |
+
 The agent release carries the domain and the agent and nothing else: no Phoenix, no assets, no
 database, and no need for the control plane's secrets.
+
+### A Windows box reached over SSH
+
+**Windows OpenSSH ends every process a session started when the session closes**, `Start-Process`
+included. An agent launched from an SSH session dies with it and looks like a box that keeps leaving
+the fleet. Either use the logon scheduled task the install script registers, or start it through WMI,
+which creates the process outside the session:
+
+```powershell
+Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+  CommandLine = 'cmd.exe /c "C:\path\to\orbitorc_agent\bin\orbitorc_agent.bat start > C:\path\to\agent.log 2>&1"'
+}
+```
+
+An agent started that way runs in session 0 and reports "headless modes only" — it can be the
+authority, not a bot client. The logon task runs in the interactive session and can be both.
 
 ## What the box reports
 
@@ -74,7 +97,8 @@ up" but "would a job launched here produce a result anybody should believe".
 | Checkout revision, branch, dirty count | Two boxes in one session running different code, which reads as a netcode disagreement. A dirty tree is named, not refused. |
 | Engine version | A version skew that changes physics or serialization under the measurement. |
 | Import freshness | A stale class cache resolves a class name to nothing; the project dies at parse time or comes up empty. This is the one that produces a metrics file full of zeros. The report names the newer file. |
-| Declared requirements | A native library the project needs and this checkout has never built. Every class it registers resolves to nothing, so the job dies at load or comes up empty. |
+| Declared requirements | A native library the project needs and this checkout has never built, or a Git LFS pointer stub where the library should be. Every class it registers resolves to nothing, so the job dies at load or comes up empty. |
+| Pinned backend | A vendored backend that is not the one the checkout's lock pins — the checkout moved to a commit whose lock names a different tag, and the old libraries are still installed. Reported as `stale-backend`. |
 | LAN address | What other machines join. Never a tunnel, never a bridge. |
 | Capabilities | `launch.<project>.<mode>` per mode, `export.<target>`, `shot`. What a verb is checked against before it crosses the wire. |
 

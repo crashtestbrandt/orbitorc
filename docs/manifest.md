@@ -76,7 +76,26 @@ a run quietly: every class it registers resolves to nothing, so the project dies
 empty and writes a metrics file of zeros. An empty directory does not satisfy a requirement — it is
 what a cleaned build leaves behind.
 
+A required file that is a **Git LFS pointer** is missing: a checkout made without LFS leaves a 130-byte
+text stub where the library should be, and the stub satisfies every existence check while the engine
+fails three steps away with an invalid header. The stub's first line names itself, so it is read rather
+than measured.
+
 The box reports each missing path in `doctor`, and the dashboard flags it, before anything is launched.
+
+```json
+"checks": {
+  "requires": ["addons/orbitnet_native/bin"],
+  "pinned": [{ "lock": "orbitnet.lock", "stamp": "addons/orbitnet_native/.fetched" }]
+}
+```
+
+`pinned` is for a project that vendors a native backend as a pinned release and records what it
+installed in a stamp beside the library: the tag, then the lock file's own sha256. A box synced to one
+commit and then moved to another whose lock names a different tag still holds the old libraries, and
+the failures that produces look like anything except a stale library. The check compares the stamp's
+second field to the lock's sha256 — offline, without hashing a byte of the library — and reports
+`stale-backend` with "run sync". A missing lock is not ok: nothing then says what is installed.
 
 ## `sync`
 
