@@ -297,6 +297,35 @@ defmodule Orbitorc.ManifestTest do
     end
   end
 
+  describe "what a mode takes" do
+    test "mode_params names the defaults, the required, the marker, and whether it renders or takes a scene" do
+      man =
+        manifest(%{
+          "bench" => %{
+            "gui" => true,
+            "ready" => "STATE PLAYING",
+            "argv" => ["--join={join}", "--duration={duration}"],
+            "defaults" => %{"duration" => 30},
+            "required" => ["join"]
+          },
+          "scene" => %{"gui" => true, "scene" => "{scene}", "argv" => []}
+        })
+
+      assert %{
+               "defaults" => %{"duration" => 30},
+               "required" => ["join"],
+               "gui" => true,
+               "scene" => false,
+               "ready" => "STATE PLAYING"
+             } = Orbitorc.Manifest.mode_params(man, "bench")
+
+      assert %{"scene" => true, "ready" => nil, "required" => []} =
+               Orbitorc.Manifest.mode_params(man, "scene")
+
+      assert Orbitorc.Manifest.mode_params(man, "nope") == nil
+    end
+  end
+
   describe "queries" do
     test "an unknown mode is refused by name, listing what the project does declare" do
       man = manifest(%{"server" => %{}, "client" => %{}})

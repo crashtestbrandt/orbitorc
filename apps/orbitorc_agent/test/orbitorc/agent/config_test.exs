@@ -90,6 +90,32 @@ defmodule Orbitorc.Agent.ConfigTest do
     assert {:error, _} = Config.fetch_project(config, "fresh")
   end
 
+  test "the report carries each mode's parameters, so a form can be built from it", %{dir: dir} do
+    repo = Path.join(dir, "p")
+
+    write_manifest(repo, %{
+      "modes" => %{
+        "server" => %{
+          "ready" => "UP",
+          "argv" => ["--port={port}"],
+          "defaults" => %{"port" => 47_900}
+        },
+        "bench" => %{"gui" => true, "argv" => ["--join={join}"], "required" => ["join"]}
+      }
+    })
+
+    {:ok, config, []} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
+    report = Orbitorc.Agent.Health.report(config)
+
+    assert %{"ok" => true, "modes" => ["bench", "server"], "params" => params} =
+             report["projects"]["p"]["manifest"]
+
+    assert params["server"]["defaults"] == %{"port" => 47_900}
+    assert params["server"]["ready"] == "UP"
+    assert params["bench"]["required"] == ["join"]
+    assert params["bench"]["gui"] == true
+  end
+
   test "an unknown project names what the box does serve", %{dir: dir} do
     repo = Path.join(dir, "p")
     write_manifest(repo)

@@ -2,7 +2,8 @@ defmodule Orbitorc.CLI do
   @moduledoc """
   The command line over the control plane's JSON API.
 
-      orbitorc doctor                               every box, from the fleet's cache
+      orbitorc fleet                                every box, from the fleet's cache
+      orbitorc doctor                               the same, as a report per box
       orbitorc doctor --box win                     one box, asked fresh
       orbitorc sync main orbitnet                   every box to one revision, and say if they disagree
       orbitorc lease claim --box win                take a box; mutating verbs need it
@@ -12,6 +13,7 @@ defmodule Orbitorc.CLI do
       orbitorc dry-run orbitnet server --box win    the exact argv, and nothing launched
       orbitorc status --box win
       orbitorc logs 3 --box win --tail 80 --grep net_peer
+      orbitorc logs 3 --box win --follow            the tail, then every line until the job exits
       orbitorc stop 3 --box win                     one job
       orbitorc stop --all                           the jobs THIS caller started, on every box
       orbitorc build spaceman windows --box win     the project's own export recipe, size asserted
@@ -57,6 +59,7 @@ defmodule Orbitorc.CLI do
     json: :boolean,
     tail: :integer,
     grep: :string,
+    follow: :boolean,
     file: :string,
     out: :string,
     measure: :integer,
@@ -188,8 +191,13 @@ defmodule Orbitorc.CLI do
 
   defp dispatch(["logs", id | _], opts) do
     with {:ok, box} <- box!(opts) do
-      get("/api/box/#{box}/jobs/#{id}/logs", %{"tail" => opts[:tail] || 100, "grep" => opts[:grep]}, opts)
-      |> show(opts, &Enum.join(&1, "\n"))
+      query = %{"tail" => opts[:tail] || 100, "grep" => opts[:grep]}
+
+      if opts[:follow] do
+        follow_logs("/api/box/#{box}/jobs/#{id}/logs/stream", query, opts)
+      else
+        get("/api/box/#{box}/jobs/#{id}/logs", query, opts) |> show(opts, &Enum.join(&1, "\n"))
+      end
     end
   end
 
@@ -319,6 +327,52 @@ defmodule Orbitorc.CLI do
          caps[name] == true or (headless and Map.has_key?(caps, name))
        end)
        |> Enum.map(& &1["name"])}
+    end
+  end
+
+  # --- log following --------------------------------------------------------------------------------
+
+  # The control plane streams the tail and then every line the box forwards, as server-sent events,
+  # until the job exits. Each `data:` line is one log line; an `end` event closes the stream.
+  defp follow_logs(path, query, opts) do
+    url = (opts[:url] || System.get_env("ORBITORC_URL") || @default_url) <> path
+    query = query |> Map.put("caller", caller(opts)) |> Map.reject(fn {_, v} -> is_nil(v) end)
+
+    case Req.get(url, params: query, into: :self, receive_timeout: :infinity, retry: false) do
+      {:ok, %{status: 200} = resp} ->
+        resp.body
+        |> Enum.reduce_while("", fn chunk, buffer -> consume(buffer <> chunk) end)
+        |> then(fn _ -> :ok end)
+
+      {:ok, %{status: status, body: body}} ->
+        body = if is_struct(body), do: Enum.join(body), else: inspect(body)
+        {:error, "the control plane answered #{status}: #{body}"}
+
+      {:error, reason} ->
+        {:error, "could not reach #{url}: #{Exception.message(reason)}"}
+    end
+  end
+
+  # Complete events are printed; a partial one waits for the next chunk.
+  defp consume(buffer) do
+    case String.split(buffer, "\n\n") do
+      [partial] ->
+        {:cont, partial}
+
+      events ->
+        {complete, [partial]} = Enum.split(events, -1)
+
+        Enum.reduce_while(complete, {:cont, partial}, fn event, acc ->
+          lines = String.split(event, "\n")
+          data = lines |> Enum.filter(&String.starts_with?(&1, "data: ")) |> Enum.map(&String.replace_prefix(&1, "data: ", ""))
+
+          if "event: end" in lines do
+            {:halt, {:halt, ""}}
+          else
+            Enum.each(data, &out/1)
+            {:cont, acc}
+          end
+        end)
     end
   end
 

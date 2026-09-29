@@ -200,6 +200,29 @@ defmodule Orbitorc.Manifest do
   @doc "Whether `mode` renders and therefore needs a graphical session."
   def needs_gui?(%__MODULE__{modes: modes}, mode), do: !!get_in(modes, [mode, "gui"])
 
+  @doc """
+  What a caller must and may supply to launch `mode`.
+
+  This is what a form or a usage line is built from: the parameters with defaults, the ones that must
+  be given, whether the mode renders, whether it takes a scene, and the marker that proves it came up.
+  """
+  @spec mode_params(t(), String.t()) :: map() | nil
+  def mode_params(%__MODULE__{modes: modes} = man, mode) do
+    case Map.fetch(modes, mode) do
+      {:ok, spec} ->
+        %{
+          "defaults" => Map.get(spec, "defaults", %{}),
+          "required" => spec |> Map.get("required", []) |> Enum.map(&to_string/1),
+          "gui" => !!Map.get(spec, "gui"),
+          "scene" => Map.has_key?(spec, "scene"),
+          "ready" => ready_marker(man, mode)
+        }
+
+      :error ->
+        nil
+    end
+  end
+
   @doc "Environment this mode adds to a job."
   def env(%__MODULE__{modes: modes}, mode) do
     modes

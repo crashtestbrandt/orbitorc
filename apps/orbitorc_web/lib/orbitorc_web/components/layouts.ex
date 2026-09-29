@@ -1,84 +1,68 @@
 defmodule OrbitorcWeb.Layouts do
   @moduledoc """
-  This module holds layouts and related functionality
-  used by your application.
+  The dashboard's frame: navigation, the name the browser acts as, and flash.
+
+  The name is a form that posts to `/identity` and comes back to the page it left. It is the one thing
+  the API has that a browser does not by itself, and every mutating verb a page runs carries it.
   """
   use OrbitorcWeb, :html
 
-  # Embed all files in layouts/* within this module.
-  # The default root.html.heex file contains the HTML
-  # skeleton of your application, namely HTML headers
-  # and other static content.
   embed_templates "layouts/*"
 
-  @doc """
-  Renders your app layout.
-
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
-
-  ## Examples
-
-      <Layouts.app flash={@flash}>
-        <h1>Content</h1>
-      </Layouts.app>
-
-  """
   attr :flash, :map, required: true, doc: "the map of flash messages"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
-
+  attr :caller, :string, default: nil, doc: "the name this browser acts as, or nil"
+  attr :path, :string, default: "/", doc: "where the identity form returns to"
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://phoenix.hexdocs.pm/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
+    <header class="border-b border-zinc-200 bg-white">
+      <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-3">
+        <nav class="flex items-baseline gap-5 text-sm">
+          <.link navigate={~p"/"} class="text-base font-semibold">OrbitOrc</.link>
+          <.link navigate={~p"/"} class="text-zinc-600 hover:underline">Fleet</.link>
+          <.link navigate={~p"/runs"} class="text-zinc-600 hover:underline">Runs</.link>
+        </nav>
+        <form action={~p"/identity"} method="post" class="flex items-center gap-2 text-sm">
+          <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+          <input type="hidden" name="return_to" value={@path} />
+          <label for="identity-caller" class="text-zinc-500">acting as</label>
+          <input
+            id="identity-caller"
+            name="caller"
+            value={@caller}
+            placeholder="your name"
+            class="w-40 rounded border border-zinc-300 px-2 py-1 font-mono text-sm"
+          />
+          <button class="rounded border border-zinc-300 px-2 py-1 hover:bg-zinc-50">Set</button>
+        </form>
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
-      </div>
+    <main class="mx-auto max-w-5xl space-y-6 p-6">
+      {render_slot(@inner_block)}
     </main>
 
     <.flash_group flash={@flash} />
     """
   end
 
-  @doc """
-  Shows the flash group with standard titles and content.
+  @doc "A line every page shows while the browser has no name: the mutating verbs are closed until it has one."
+  attr :caller, :string, default: nil
 
-  ## Examples
+  def identity_notice(assigns) do
+    ~H"""
+    <p
+      :if={is_nil(@caller)}
+      class="rounded border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-700"
+    >
+      Set a name above to launch, stop, sync, build or take a lease. The lease arbitrates between names,
+      and the audit log attributes to them.
+    </p>
+    """
+  end
 
-      <.flash_group flash={@flash} />
-  """
+  @doc "Shows the flash group with standard titles and content."
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
 
@@ -91,7 +75,7 @@ defmodule OrbitorcWeb.Layouts do
       <.flash
         id="client-error"
         kind={:error}
-        title="We can't find the internet"
+        title="Disconnected"
         phx-disconnected={
           show(".phx-client-error #client-error")
           |> JS.remove_attribute("hidden", to: ".phx-client-error #client-error")
@@ -99,14 +83,13 @@ defmodule OrbitorcWeb.Layouts do
         phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        Attempting to reconnect
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+        Reconnecting <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
 
       <.flash
         id="server-error"
         kind={:error}
-        title="Something went wrong!"
+        title="The control plane is unreachable"
         phx-disconnected={
           show(".phx-server-error #server-error")
           |> JS.remove_attribute("hidden", to: ".phx-server-error #server-error")
@@ -114,46 +97,8 @@ defmodule OrbitorcWeb.Layouts do
         phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        Attempting to reconnect
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+        Reconnecting <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
-    </div>
-    """
-  end
-
-  @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
-
-  See <head> in root.html.heex which applies the theme before page load.
-  """
-  def theme_toggle(assigns) do
-    ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 [[data-theme-source=system]_&]:!left-0 transition-[left]" />
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="system"
-      >
-        <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="light"
-      >
-        <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="dark"
-      >
-        <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
     </div>
     """
   end
