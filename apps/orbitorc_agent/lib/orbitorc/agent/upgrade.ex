@@ -214,23 +214,45 @@ defmodule Orbitorc.Agent.Upgrade do
   # only makes it sooner, and is harmless when the task is already running.
   @doc false
   def windows_script(root, staged, os_pid, log) do
+    root = win_path(root)
+    staged = win_path(staged)
     old = root <> ".old"
-    staging = Path.join(Path.dirname(root), Path.basename(root) <> ".staging")
+    staging = win_path(Path.join(Path.dirname(root), Path.basename(root) <> ".staging"))
 
     """
-    $ErrorActionPreference = 'Continue'
-    $log = '#{log}'
-    "$(Get-Date -Format s) waiting for the agent (pid #{os_pid}) to exit" | Add-Content $log
+    $ErrorActionPreference = 'Stop'
+    $log = '#{win_path(log)}'
+    function Note($m) { "$(Get-Date -Format s) $m" | Add-Content $log }
+    Note "waiting for the agent (pid #{os_pid}) to exit"
     Wait-Process -Id #{os_pid} -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
-    if (Test-Path '#{old}') { Remove-Item -Recurse -Force '#{old}' }
-    Move-Item -Path '#{root}' -Destination '#{old}'
-    Move-Item -Path '#{staged}' -Destination '#{root}'
-    if (Test-Path '#{staging}') { Remove-Item -Recurse -Force '#{staging}' -ErrorAction SilentlyContinue }
-    "$(Get-Date -Format s) swapped in the staged release" | Add-Content $log
+    # Anything still running out of the release directory holds it against the rename: the first
+    # release started an epmd that outlived it, the move failed, and the staged release landed inside
+    # the old one. Stop them, then move only when the move has actually happened.
+    Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '#{root}\\*' } | ForEach-Object {
+      Note "stopping $($_.Name) (pid $($_.ProcessId)) still running out of the release"
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Seconds 1
+    try {
+      if (Test-Path '#{old}') { Remove-Item -Recurse -Force '#{old}' }
+      $moved = $false
+      for ($i = 0; $i -lt 10 -and -not $moved; $i++) {
+        try { Move-Item -Path '#{root}' -Destination '#{old}' -ErrorAction Stop; $moved = $true } catch { Start-Sleep -Seconds 2 }
+      }
+      if (-not $moved) { throw "could not move #{root} aside; something still holds it" }
+      Move-Item -Path '#{staged}' -Destination '#{root}' -ErrorAction Stop
+      if (Test-Path '#{staging}') { Remove-Item -Recurse -Force '#{staging}' -ErrorAction SilentlyContinue }
+      Note "swapped in the staged release"
+    } catch {
+      Note "SWAP FAILED: $($_.Exception.Message); the previous release stays in place"
+    }
     Start-ScheduledTask -TaskName 'OrbitOrc Agent' -ErrorAction SilentlyContinue
     """
   end
+
+  @doc false
+  def win_path(path), do: String.replace(path, "/", "\\")
 
   # Through WMI, so the script is not a child of this process and outlives it.
   defp launch_detached(script) do

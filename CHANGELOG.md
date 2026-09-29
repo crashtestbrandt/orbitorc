@@ -7,6 +7,13 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Fixed
+
+- The agent release runs no distribution and starts no epmd. On Windows an epmd started by the previous
+  release outlived it and held the release directory, so an upgrade's swap failed and, unchecked, moved
+  the staged release inside the old one while logging success. The swap script now stops whatever still
+  runs out of the release, checks each move, and logs a failed swap as one.
+
 ## [0.3.0] - 2026-09-29
 
 ### Added

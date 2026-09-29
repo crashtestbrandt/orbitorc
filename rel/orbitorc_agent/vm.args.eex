@@ -1,0 +1,2 @@
+## The agent runs no distribution, so no epmd is started for it (see env.sh.eex / env.bat.eex).
+-start_epmd false
