@@ -11,7 +11,9 @@ defmodule Orbitorc.Agent.SyncTest do
 
   alias Orbitorc.Agent.{Config, Jobs, Link}
 
-  @timeout 5_000
+  # Real git and, on Windows, a powershell session check sit behind every one of these answers; a CI
+  # runner there takes seconds where a Mac takes milliseconds.
+  @timeout 20_000
 
   setup do
     tmp = Path.join(System.tmp_dir!(), "orbitorc-sync-#{System.unique_integer([:positive])}")
