@@ -27,3 +27,5 @@ erl_crash.dump
 *.db
 *.db-*
 
+# Local development overrides: the tokens of real boxes, never committed.
+/config/dev.local.exs

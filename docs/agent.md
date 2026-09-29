@@ -35,7 +35,7 @@ the box already offers and nothing more.
 | Key | |
 | --- | --- |
 | `control_plane` | Where the agent dials out to. `wss://` is verified against the system trust store. |
-| `name` | How this box appears in the fleet. The control plane holds one token per name; a box may only join as the name its token belongs to. |
+| `name` | How this box appears in the fleet. The control plane holds one token per name; a box may only join as the name its token belongs to. A release reads them from `ORBITORC_AGENT_TOKENS=name=token,…`; a development control plane reads them from a gitignored `config/dev.local.exs`. |
 | `projects` | Each with its **own checkout and its own engine binary**. Never a checkout a CI runner shares: a runner deletes and re-fetches its tools mid-job, which would remove the engine from under a live measurement. |
 | `game_port` / `relay_port` | The band a job binds. Keep it clear of the ports a project's own harnesses use on the same machine, so a job here never makes an unrelated probe fail to bind. |
 | `job_retention` | Job directories to keep. Ids never repeat; the lowest are pruned at start, and the agent says which. |

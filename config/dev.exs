@@ -64,11 +64,17 @@ config :orbitorc_web, dev_routes: true
 
 # Agent tokens, one per box. A shared secret makes the audit log say "somebody" and makes revocation an
 # outage, so the map is box name to token. Development uses a fixed value so an agent config can be
-# written once; `config/runtime.exs` reads the real ones from the environment.
+# written once. `config/runtime.exs` reads the real ones from the environment for a release.
 config :orbitorc_web,
   agent_tokens: %{
     "dev" => "dev-token-not-for-anything-real"
   }
+
+# Local overrides that never enter version control -- the tokens of the real boxes a developer's
+# control plane admits, for one. `config/dev.local.exs` is ignored by git; it is the last file read, so
+# what it sets wins. A map value replaces rather than merges, so an `agent_tokens` there lists every
+# box, the `dev` one included.
+if File.exists?(Path.expand("dev.local.exs", __DIR__)), do: import_config("dev.local.exs")
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
