@@ -16,7 +16,7 @@ special, and it runs from anywhere.
 | --- | --- | --- |
 | `doctor` | | Every box, from the fleet's cache. |
 | `doctor --box NAME` | | One box, asked fresh. |
-| `sync REV PROJECT [--box NAME \| --all]` | yes | Every named box (default: all) to one revision, and say whether they agree. A branch name is the remote's branch (`sync main` is `origin/main`); a sha or tag is itself. Needs no manifest in the checkout: a sync is how a checkout gets one, and the box serves it as soon as the sync returns. |
+| `sync REV PROJECT [--box NAME \| --all]` | yes | Every named box (default: all) to one revision, and say whether they agree. A branch name is the remote's branch (`sync main` is `origin/main`); a sha or tag is itself. Needs no manifest in the checkout: a sync is how a checkout gets one, and the box serves it as soon as the sync returns; a manifest with `sync.import` then has the box import the tree. |
 | `lease claim\|renew\|release --box NAME [--ttl S]` | | Take, extend or give up a box. |
 | `launch PROJECT MODE --box NAME\|--all [--param k=v …] [--headless] [-- game args]` | yes | Launch a mode the project declares. `--all` is every box reporting `launch.PROJECT.MODE`. |
 | `dry-run PROJECT MODE --box NAME\|--all [--param k=v …] [-- game args]` | | The exact argv the box would run, and nothing launched. |

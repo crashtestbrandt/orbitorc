@@ -108,6 +108,7 @@ second field to the lock's sha256 — offline, without hashing a byte of the lib
 | `build` | The project's own build command, run in the checkout. `{target}` is replaced by the requested export target. OrbitOrc does not know how a project builds. |
 | `build_dir` | Where a build lands. The `build` verb asserts something appeared there. |
 | `build_min_bytes` | A floor on the artifact's size. A build that "succeeded" and produced a stub is the shape that reaches a measurement and reports a confident wrong answer. |
+| `import` | `true` to import the engine project after every sync, so the class cache the next launch resolves through is this tree's. A synced tree with the previous checkout's cache resolves a renamed class to `Variant` and dies at parse time, reported as a server that never printed its marker. A cold project is imported twice; the cache file, not the engine's exit status, is the verdict. |
 
 `sync` itself is `git fetch`, `git checkout --force <revision>`, `git reset --hard`. Anything
 uncommitted is gone, which is intended: every machine in a fleet must run the same code. That is why a

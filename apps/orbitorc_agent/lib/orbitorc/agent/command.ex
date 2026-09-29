@@ -89,6 +89,43 @@ defmodule Orbitorc.Agent.Command do
   end
 
   @doc """
+  Import the engine project, so the class cache the next launch resolves through describes this tree.
+
+  ## A synced tree with the previous tree's cache does not parse
+
+  The engine resolves every `class_name` through `.godot/global_script_class_cache.cfg`. After a sync
+  that cache is whatever the previous checkout left: a class added or renamed since is missing from it,
+  every use of it resolves to `Variant`, and a project that promotes that warning to an error dies at
+  parse time -- reported three steps from the cause, as a server that never printed its marker. So a
+  manifest may ask (`sync.import`) for an import after every sync, and this is it.
+
+  A cold project is imported twice: the first pass is priming (an extension perturbs the build order
+  of a cache built from nothing) and is discarded. The engine's exit status is not the verdict -- an
+  import prints errors it does not fail on -- the cache file is.
+  """
+  @spec import_project(String.t(), Path.t(), keyword()) :: {:ok, map()} | {:error, String.t()}
+  def import_project(engine_bin, project_path, opts \\ []) do
+    cache = Path.join([project_path, ".godot", "global_script_class_cache.cfg"])
+    argv = [engine_bin, "--headless", "--path", project_path, "--import"]
+    opts = Keyword.put_new(opts, :timeout_ms, 900_000)
+    passes = if File.regular?(cache) and File.stat!(cache).size > 0, do: 1, else: 2
+
+    result =
+      Enum.reduce_while(1..passes, {:ok, ""}, fn _pass, _acc ->
+        case run(argv, project_path, opts) do
+          {:ok, %{output: output}} -> {:cont, {:ok, output}}
+          {:error, reason} -> {:halt, {:error, reason}}
+        end
+      end)
+
+    with {:ok, output} <- result do
+      if File.regular?(cache) and File.stat!(cache).size > 0,
+        do: {:ok, %{"ok" => true, "passes" => passes, "cache" => cache}},
+        else: {:error, "the import left no class cache at #{cache}: #{tail(output)}"}
+    end
+  end
+
+  @doc """
   Run a project's own build recipe.
 
   OrbitOrc does not know how a project builds. The manifest names the command, so this stays a matter

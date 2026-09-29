@@ -160,11 +160,17 @@ defmodule Orbitorc.Agent.Link do
 
     # The tree is not the one the agent started with. What it declares is re-read now, so a manifest
     # the sync brought is served at once -- the re-report that follows describes this tree, not the
-    # old one -- and a project whose manifest went away stops being launchable.
-    socket =
+    # old one -- and a project whose manifest went away stops being launchable. Then, if the manifest
+    # asks, the engine imports the tree, so the class cache the next launch resolves through is this
+    # tree's and not the previous checkout's.
+    {socket, result} =
       case result do
-        {:ok, _} -> reload_manifest(socket, payload["project"])
-        _ -> socket
+        {:ok, report} ->
+          socket = reload_manifest(socket, payload["project"])
+          {socket, import_after_sync(socket.assigns.config, payload["project"], report)}
+
+        _ ->
+          {socket, result}
       end
 
     reply(socket, payload, normalize(result))
@@ -307,6 +313,25 @@ defmodule Orbitorc.Agent.Link do
       config: config,
       problems: if(problem, do: problems ++ [problem], else: problems)
     )
+  end
+
+  defp import_after_sync(config, project, report) do
+    case Config.fetch_project(config, project) do
+      {:ok, spec, %{sync: %{"import" => true}} = manifest} ->
+        path = Orbitorc.Manifest.project_path(manifest, spec.repo)
+
+        case Command.import_project(spec.engine_bin, path) do
+          {:ok, import} ->
+            {:ok, Map.put(report, "import", import)}
+
+          {:error, reason} ->
+            {:error, "synced to #{report["sha"]}, but the import failed: #{reason}"}
+        end
+
+      _ ->
+        {:ok,
+         Map.put(report, "import", %{"ok" => true, "skipped" => "the manifest asks for none"})}
+    end
   end
 
   defp do_sync(nil, _caller, _payload), do: {:error, "this box has no configuration"}
