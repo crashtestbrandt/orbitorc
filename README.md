@@ -7,6 +7,10 @@ Earth Observatory (Black Marble 2016) and Milky Way from NASA/SVS *Deep Star Map
 
 Network orchestration for multiplayer games, at indie scale.
 
+![The dashboard: three connected boxes, one on a different revision with a dirty tree and a stale import cache, and the sync and upgrade forms that act on all of them](docs/img/dashboard.png)
+
+<sub>The fleet page of a development control plane, with a pretend fleet. Every verb the command line has is also a form or a button here.</sub>
+
 Large studios test netcode on a fleet: a build goes to many machines, a session comes up across them,
 bots drive it under a chosen link, and every machine's metrics come back to one place. Unreal's
 Gauntlet and Riot's Backend Validation Service are that shape. OrbitOrc is the same shape for a team
