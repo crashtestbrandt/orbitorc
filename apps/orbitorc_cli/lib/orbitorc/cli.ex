@@ -22,6 +22,7 @@ defmodule Orbitorc.CLI do
       orbitorc pull 3 --box win --out ./artifacts   fetch an artifact to where you are standing
       orbitorc verdict 3 orbitnet --box win
       orbitorc run orbitnet --measure 30 --load-per-box 4 --wait
+      orbitorc run arena --authority-mode dedicated --load-mode bench --link relay --wait
       orbitorc runs                                 live runs, then history
       orbitorc upgrade v0.2.0 --all                 every agent to a release; each swaps and restarts
       orbitorc run-status ID
@@ -68,6 +69,8 @@ defmodule Orbitorc.CLI do
     load_per_box: :integer,
     seed: :integer,
     authority_box: :string,
+    authority_mode: :string,
+    load_mode: :string,
     load_box: :keep,
     allow_colocated: :boolean,
     force: :boolean,
@@ -266,6 +269,8 @@ defmodule Orbitorc.CLI do
       |> put_if(opts[:load_per_box], "load_per_box", opts[:load_per_box])
       |> put_if(opts[:seed], "seed", opts[:seed])
       |> put_if(opts[:authority_box], "authority_box", opts[:authority_box])
+      |> put_if(opts[:authority_mode], "authority_mode", opts[:authority_mode])
+      |> put_if(opts[:load_mode], "load_mode", opts[:load_mode])
       |> put_if(opts[:allow_colocated], "allow_colocated", true)
       |> then(fn b ->
         case Keyword.get_values(opts, :load_box) do

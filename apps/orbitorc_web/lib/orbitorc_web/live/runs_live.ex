@@ -28,6 +28,8 @@ defmodule OrbitorcWeb.RunsLive do
        form: %{
          "project" => boxes |> projects() |> List.first() || "",
          "authority_box" => "",
+         "authority_mode" => "server",
+         "load_mode" => "bench",
          "measure_s" => "25",
          "load_per_box" => "1",
          "link_mode" => "",
@@ -56,6 +58,8 @@ defmodule OrbitorcWeb.RunsLive do
     payload =
       %{"project" => form["project"], "params" => parse_params(form["params"])}
       |> put_unless_blank("authority_box", form["authority_box"])
+      |> put_unless_blank("authority_mode", form["authority_mode"])
+      |> put_unless_blank("load_mode", form["load_mode"])
       |> put_unless_blank("measure_s", form["measure_s"])
       |> put_unless_blank("load_per_box", form["load_per_box"])
       |> put_unless_blank("link_mode", form["link_mode"])
@@ -71,7 +75,9 @@ defmodule OrbitorcWeb.RunsLive do
 
   defp form_fields(params) do
     params
-    |> Map.take(~w(project authority_box measure_s load_per_box link_mode seed params))
+    |> Map.take(
+      ~w(project authority_box authority_mode load_mode measure_s load_per_box link_mode seed params)
+    )
     |> Map.put(
       "allow_colocated",
       if(params["allow_colocated"] in ["true", "on"], do: "true", else: "false")
@@ -158,6 +164,22 @@ defmodule OrbitorcWeb.RunsLive do
                 {b.name}
               </option>
             </select>
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-zinc-500">Authority mode</span>
+            <input
+              name="authority_mode"
+              value={@form["authority_mode"]}
+              class="rounded border border-zinc-300 px-2 py-1 font-mono"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-zinc-500">Load mode</span>
+            <input
+              name="load_mode"
+              value={@form["load_mode"]}
+              class="rounded border border-zinc-300 px-2 py-1 font-mono"
+            />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-zinc-500">Measure (s)</span>

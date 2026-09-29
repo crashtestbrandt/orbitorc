@@ -35,6 +35,9 @@ defmodule Orbitorc.Agent.LinkTest do
     # The box's lease lives in an application-wide process and would otherwise carry from one test to
     # the next: a lease claimed in one test turned the next test's "needs the lease" into a different
     # refusal. Every test starts with nobody holding the box.
+    for {_, pid, _, _} <- DynamicSupervisor.which_children(Orbitorc.Agent.JobSupervisor),
+        do: DynamicSupervisor.terminate_child(Orbitorc.Agent.JobSupervisor, pid)
+
     :sys.replace_state(Orbitorc.Agent.Leases, fn _ -> Orbitorc.Lease.new() end)
 
     start_supervised!({Jobs, root: config.jobs_dir, retention: 5})

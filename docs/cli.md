@@ -16,7 +16,7 @@ special, and it runs from anywhere.
 | --- | --- | --- |
 | `doctor` | | Every box, from the fleet's cache. |
 | `doctor --box NAME` | | One box, asked fresh. |
-| `sync REV PROJECT [--box NAME \| --all]` | yes | Every named box (default: all) to one revision, and say whether they agree. A branch name is the remote's branch (`sync main` is `origin/main`); a sha or tag is itself. Needs no manifest in the checkout: a sync is how a checkout gets one, and the box serves it as soon as the sync returns. |
+| `sync REV PROJECT [--box NAME \| --all]` | yes | Every named box (default: all) to one revision, and say whether they agree. A branch name is the remote's branch (`sync main` is `origin/main`); a sha or tag is itself. Needs no manifest in the checkout: a sync is how a checkout gets one, and the box serves it as soon as the sync returns; a manifest with `sync.import` then has the box import the tree. |
 | `lease claim\|renew\|release --box NAME [--ttl S]` | | Take, extend or give up a box. |
 | `launch PROJECT MODE --box NAME\|--all [--param k=v …] [--headless] [-- game args]` | yes | Launch a mode the project declares. `--all` is every box reporting `launch.PROJECT.MODE`. |
 | `dry-run PROJECT MODE --box NAME\|--all [--param k=v …] [-- game args]` | | The exact argv the box would run, and nothing launched. |
@@ -28,7 +28,7 @@ special, and it runs from anywhere.
 | `shot JOB --box NAME [--window HINT]` | yes | Capture one window. Never the screen. |
 | `pull JOB --box NAME [--file NAME] [--out DIR]` | | Fetch an artifact to where you are standing. |
 | `verdict JOB PROJECT --box NAME` | | Did that job measure anything. |
-| `run PROJECT [--measure S] [--link MODE] [--load-per-box N] [--authority-box NAME] [--load-box NAME …] [--seed N] [--allow-colocated] [--wait]` | takes its own | A whole fleet run. `--wait` follows it to its verdict. |
+| `run PROJECT [--authority-mode MODE] [--load-mode MODE] [--measure S] [--link MODE] [--load-per-box N] [--authority-box NAME] [--load-box NAME …] [--seed N] [--allow-colocated] [--wait]` | takes its own | A whole fleet run. `--wait` follows it to its verdict. The authority mode defaults to `server` and the load mode to `bench`; a project whose manifest names them differently says so here. |
 | `run-status ID` | | A run's snapshot and timeline. |
 | `runs` | | Live runs, then history. |
 | `upgrade TAG\|URL --box NAME\|--all [--sha256 HEX]` | yes | Replace each agent with a release: fetched, verified against its checksum, swapped, restarted by its service manager. A box with a job running refuses. |

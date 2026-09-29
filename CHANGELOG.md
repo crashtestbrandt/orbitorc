@@ -7,6 +7,14 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Added
+
+- `run --authority-mode MODE --load-mode MODE` on the command line, and the same two fields on the runs
+  page. The API took them already; a project whose authority mode is not called `server` could not be run
+  from the command line.
+- `sync.import` in a manifest: the box imports the engine project after every sync, so a renamed class
+  does not resolve to `Variant` out of the previous checkout's cache. The sync's reply says so.
+
 ## [0.2.0] - 2026-09-29
 
 ### Added

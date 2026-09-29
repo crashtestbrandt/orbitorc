@@ -31,10 +31,29 @@ defmodule Orbitorc.Agent.SyncTest do
     git!(tmp, ["clone", "-q", origin, checkout])
     git!(checkout, ["checkout", "-q", "--detach", first])
 
+    # The manifest asks for an import after a sync; the "engine" is a script that writes the class
+    # cache an import leaves, so the test needs no engine and sees the import happen.
     File.write!(
       Path.join(origin, "orbitorc.json"),
-      Jason.encode!(%{"schema" => 1, "project" => "p", "modes" => %{"smoke" => %{}}})
+      Jason.encode!(%{
+        "schema" => 1,
+        "project" => "p",
+        "modes" => %{"smoke" => %{}},
+        # The stand-in engine is a shell script, which only a Unix box can run; on Windows the
+        # manifest asks for no import and the reply says so.
+        "sync" => %{"import" => match?({:unix, _}, :os.type())}
+      })
     )
+
+    engine = Path.join(tmp, "fake-engine")
+
+    File.write!(engine, """
+    #!/bin/sh
+    # $3 is the project path (--headless --path PATH --import)
+    mkdir -p "$3/.godot" && echo "imported" >> "$3/.godot/global_script_class_cache.cfg"
+    """)
+
+    File.chmod!(engine, 0o755)
 
     git!(origin, ["add", "."])
     git!(origin, ["commit", "-q", "-m", "manifest"])
@@ -43,17 +62,21 @@ defmodule Orbitorc.Agent.SyncTest do
     {:ok, config, [problem]} =
       Config.load(
         write_config(tmp, [
-          %{"name" => "p", "repo" => checkout, "engine_bin" => "godot-not-here"}
+          %{"name" => "p", "repo" => checkout, "engine_bin" => engine}
         ])
       )
 
     assert problem =~ "p:"
+    # Nothing another module launched may still be flushing log lines onto the shared topic.
+    for {_, pid, _, _} <- DynamicSupervisor.which_children(Orbitorc.Agent.JobSupervisor),
+        do: DynamicSupervisor.terminate_child(Orbitorc.Agent.JobSupervisor, pid)
+
     :sys.replace_state(Orbitorc.Agent.Leases, fn _ -> Orbitorc.Lease.new() end)
     start_supervised!({Jobs, root: Path.join(tmp, "jobs"), retention: 5})
     pid = start_supervised!({Link, config: config, problems: [problem], test_mode?: true})
     accept_connect(Link)
     assert_join("agent", %{"name" => "box"}, :ok, @timeout)
-    {:ok, pid: pid, first: first, second: second}
+    {:ok, pid: pid, first: first, second: second, checkout: checkout}
   end
 
   test "A FRESH CHECKOUT CAN BE SYNCED TO ITS MANIFEST, and serves it at once", ctx do
@@ -91,6 +114,15 @@ defmodule Orbitorc.Agent.SyncTest do
     )
 
     assert synced["sha"] == ctx.second
+
+    # The manifest the sync brought asked for an import, and it ran: a cold tree is imported twice,
+    # and the cache it left is the evidence.
+    if match?({:unix, _}, :os.type()) do
+      assert %{"ok" => true, "passes" => 2} = synced["import"]
+      assert File.exists?(Path.join([ctx.checkout, ".godot", "global_script_class_cache.cfg"]))
+    else
+      assert %{"ok" => true, "skipped" => _} = synced["import"]
+    end
 
     # After: the manifest the sync brought is served, the problem is gone, and the box re-reported.
     assert_push("agent", "report", %{"report" => report}, _, @timeout)

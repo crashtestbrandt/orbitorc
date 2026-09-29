@@ -173,6 +173,8 @@ defmodule OrbitorcWeb.DashboardTest do
     view
     |> form("#run-form", %{
       "project" => "demo",
+      "authority_mode" => "dedicated",
+      "load_mode" => "bench",
       "measure_s" => "5",
       "load_per_box" => "1",
       "params" => "seed=4\nlabel=x"
@@ -181,5 +183,13 @@ defmodule OrbitorcWeb.DashboardTest do
 
     assert {path, _flash} = assert_redirect(view)
     assert path =~ ~r"^/run/"
+
+    # The modes reach the run's spec. (With one box the run refuses at placement, so nothing is launched;
+    # the spec it recorded is the evidence.)
+    "/run/" <> id = path
+    Process.sleep(200)
+    assert {:ok, snap} = Orbitorc.Runs.fetch(id)
+    assert snap.spec["authority_mode"] == "dedicated"
+    assert snap.spec["load_mode"] == "bench"
   end
 end
