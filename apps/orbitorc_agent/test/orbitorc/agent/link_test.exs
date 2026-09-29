@@ -47,7 +47,9 @@ defmodule Orbitorc.Agent.LinkTest do
 
     # The link joins as the name its configuration gives, with a report -- the shape the control plane
     # checks. Asserting the join is also what accepts it.
-    assert_join("agent", %{"name" => "box", "report" => %{"platform" => _}}, :ok)
+    # The report shells out (the session check runs powershell on Windows), which is longer than the
+    # default 100ms on a CI runner.
+    assert_join("agent", %{"name" => "box", "report" => %{"platform" => _}}, :ok, 10_000)
     {:ok, pid: pid}
   end
 
