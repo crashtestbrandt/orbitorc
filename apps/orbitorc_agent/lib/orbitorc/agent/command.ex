@@ -115,12 +115,15 @@ defmodule Orbitorc.Agent.Command do
   end
 
   # A build that produced nothing, or produced a stub, has to fail here rather than at the measurement.
+  # The search is recursive: an export may land in a per-commit or per-target subdirectory rather than
+  # at the top of the declared directory, and a check that looked only there would report a real build
+  # as a missing one.
   defp assert_artifact(repo, sync_spec, target) do
     dir = Path.join(repo, Map.get(sync_spec, "build_dir", "build"))
     floor = Map.get(sync_spec, "build_min_bytes", 0)
 
     case dir
-         |> Path.join("*" <> target <> "*")
+         |> Path.join("**/*" <> target <> "*")
          |> Path.wildcard()
          |> Enum.filter(&File.regular?/1) do
       [] ->
