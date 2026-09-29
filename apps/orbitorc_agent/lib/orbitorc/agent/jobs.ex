@@ -88,8 +88,11 @@ defmodule Orbitorc.Agent.Jobs do
   # The keys a job records about itself, read back with the same names the live snapshot uses.
   @recorded ~w(id project mode caller argv dir os_pid marker ready ready_ms started_at exit_status stdout)a
 
-  defp from_disk(id) when is_integer(id) do
-    path = Path.join([dir(id), "job.json"])
+  defp from_disk(id) when is_integer(id), do: from_disk(dir(id), id)
+  defp from_disk(_), do: {:error, :no_such_job}
+
+  defp from_disk(job_dir, id) when is_integer(id) do
+    path = Path.join([job_dir, "job.json"])
 
     with {:ok, body} <- File.read(path),
          {:ok, raw} <- Jason.decode(body) do
@@ -104,16 +107,18 @@ defmodule Orbitorc.Agent.Jobs do
     end
   end
 
-  defp from_disk(_), do: {:error, :no_such_job}
+  defp from_disk(_job_dir, _), do: {:error, :no_such_job}
 
   # A job can exit between its start and this question -- a bad argv fails in milliseconds, and so
   # does a job that only writes its marker. The record it wrote on the way out answers instead of
   # the question taking the registry down with it.
-  defp info_of(pid, id) do
+  # Called from inside the server, so the record is read under the root it holds rather than asked of
+  # itself.
+  defp info_of(pid, id, root) do
     Job.info(pid)
   catch
     :exit, _ ->
-      case from_disk(id) do
+      case from_disk(Path.join(root, Integer.to_string(id)), id) do
         {:ok, info} -> info
         _ -> %{id: id, alive: false}
       end
@@ -174,7 +179,7 @@ defmodule Orbitorc.Agent.Jobs do
       {:ok, pid} ->
         Process.monitor(pid)
         state = %{state | next: id + 1, jobs: Map.put(state.jobs, id, pid)}
-        {:reply, {:ok, id, info_of(pid, id)}, state}
+        {:reply, {:ok, id, info_of(pid, id, state.root)}, state}
 
       {:error, reason} ->
         {:reply, {:error, reason}, %{state | next: id + 1}}
@@ -187,7 +192,7 @@ defmodule Orbitorc.Agent.Jobs do
       state.jobs
       |> Enum.sort_by(&elem(&1, 0))
       |> Enum.flat_map(fn {id, pid} ->
-        if Process.alive?(pid), do: [info_of(pid, id)], else: []
+        if Process.alive?(pid), do: [info_of(pid, id, state.root)], else: []
       end)
 
     {:reply, jobs, state}
