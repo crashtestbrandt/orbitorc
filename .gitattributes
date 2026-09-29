@@ -1,0 +1,5 @@
+# Every text file is LF in the working tree on every platform. A Windows checkout that converted to CRLF
+# made `mix format --check-formatted` report every line of every file as changed.
+* text=auto eol=lf
+*.png binary
+*.db binary
