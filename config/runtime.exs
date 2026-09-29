@@ -48,7 +48,12 @@ end
 # release carries neither a database nor an endpoint, and a box must not fail to start for want of a
 # secret it has no use for -- so the block runs only for the control plane's release (or outside a
 # release entirely, as `mix phx.server` does).
-control_plane? = System.get_env("RELEASE_NAME") in [nil, "orbitorc"]
+# The command line is an escript built from this umbrella, and an escript evaluates this file too.
+# It carries no control plane, so the block below must not run for it: without the check the
+# released command line refused to start for want of DATABASE_PATH.
+control_plane? =
+  System.get_env("RELEASE_NAME") in [nil, "orbitorc"] and
+    Code.ensure_loaded?(OrbitorcWeb.Endpoint)
 
 if config_env() == :prod and control_plane? do
   # A release serves HTTP by itself; there is no `mix phx.server` in front of it to say so.
@@ -77,11 +82,21 @@ if config_env() == :prod and control_plane? do
       You can generate one by calling: mix phx.gen.secret
       """
 
+  # PHX_HOST is the name or address the dashboard is opened at. A browser's WebSocket carries that
+  # origin, and the endpoint refuses any origin it was not told about -- so a control plane opened at
+  # its LAN address with no PHX_HOST refused every dashboard socket, and each page fell back to long
+  # polling and reconnected until the process ran out of file descriptors. localhost is always allowed.
+  host = System.get_env("PHX_HOST") || "localhost"
+  port = String.to_integer(System.get_env("PORT", "4000"))
+
   config :orbitorc_web, OrbitorcWeb.Endpoint,
+    url: [host: host, port: port, scheme: "http"],
+    check_origin: Enum.uniq(["//#{host}", "//localhost", "//127.0.0.1"]),
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
+      ip: {0, 0, 0, 0, 0, 0, 0, 0},
+      port: port
     ],
     secret_key_base: secret_key_base
 

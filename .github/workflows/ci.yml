@@ -77,8 +77,15 @@ jobs:
       - run: mix assets.deploy
         working-directory: apps/orbitorc_web
       - run: mix release orbitorc --overwrite
-      # The command line as a standalone escript.
+      # The command line as a standalone escript -- and a proof that it starts. It is built with this
+      # umbrella's runtime configuration embedded, and once refused to start for want of a control
+      # plane's environment; a verb against an unreachable address must answer, not crash.
       - run: mix escript.build
+        working-directory: apps/orbitorc_cli
+      - shell: bash
+        run: |
+          out="$(./orbitorc fleet --url http://127.0.0.1:9 2>&1 || true)"
+          echo "$out" | grep -q "could not reach" || { echo "the command line did not start cleanly:"; echo "$out"; exit 1; }
         working-directory: apps/orbitorc_cli
       - uses: actions/upload-artifact@v4
         with:
