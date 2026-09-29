@@ -12,7 +12,7 @@ defmodule Orbitorc.Agent.MixProject do
   def project do
     [
       app: :orbitorc_agent,
-      version: "0.1.0",
+      version: File.read!(Path.join(__DIR__, "../../VERSION")) |> String.trim(),
       build_path: "../../_build",
       config_path: "../../config/config.exs",
       deps_path: "../../deps",

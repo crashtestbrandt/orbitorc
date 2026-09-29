@@ -21,7 +21,7 @@ special, and it runs from anywhere.
 | `launch PROJECT MODE --box NAME\|--all [--param k=v …] [--headless] [-- game args]` | yes | Launch a mode the project declares. `--all` is every box reporting `launch.PROJECT.MODE`. |
 | `dry-run PROJECT MODE --box NAME\|--all [--param k=v …] [-- game args]` | | The exact argv the box would run, and nothing launched. |
 | `status --box NAME` | | What the box is running, and who holds it. |
-| `logs JOB --box NAME [--tail N] [--grep RE]` | | A job's log, live or finished. |
+| `logs JOB --box NAME [--tail N] [--grep RE] [--follow]` | | A job's log, live or finished. `--follow` prints the tail and then every line the box writes until the job exits, over the control plane's event stream. |
 | `stop JOB --box NAME` | yes | One job. |
 | `stop --box NAME\|--all [--force]` | yes | Every job this caller started, on one box or every box. `--force` takes everyone's. |
 | `build PROJECT TARGET --box NAME\|--all` | yes | The project's own build recipe, with the artifact asserted against its floor. `--all` is every box reporting `export.TARGET`. |

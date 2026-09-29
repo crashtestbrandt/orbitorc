@@ -58,6 +58,7 @@ each one's output, and tearing all of them down correctly when any of it fails. 
 | [docs/agent.md](docs/agent.md) | Configuring a box, installing into its graphical session, what it reports and what it refuses. |
 | [docs/runs.md](docs/runs.md) | What a fleet run does, phase by phase, and what to read when it fails. |
 | [docs/cli.md](docs/cli.md) | Every verb. |
+| [docs/dashboard.md](docs/dashboard.md) | The same verbs from a browser, and the name a browser acts as. |
 
 ```sh
 mix setup                       # dependencies, the database, assets
@@ -68,6 +69,13 @@ mix escript                     # the standalone command line: apps/orbitorc_cli
 
 CI builds the agent, the control plane and the command line for Linux, macOS and Windows on every
 push, and attaches them to a release on a tag. `flake.nix` builds the agent for NixOS.
+
+## Releases
+
+Tags `vX.Y.Z` on `main` are releases, numbered by [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
+the manifest, the agent's configuration, the agent–control plane protocol, the JSON API and the command
+line are the surfaces a version number is a promise about. `CHANGELOG.md` lists every release; each one
+carries the agent, the control plane and the command line for Linux, macOS and Windows, built by CI.
 
 ## License
 

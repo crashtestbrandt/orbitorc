@@ -239,10 +239,15 @@ defmodule Orbitorc.Agent.Health do
   defp manifest_report(%Config{manifests: manifests}, name) do
     case Map.fetch(manifests, name) do
       {:ok, manifest} ->
+        modes = Orbitorc.Manifest.mode_names(manifest)
+
+        # Per-mode parameters ride along so a page can build a launch form, and a usage line can name
+        # what a mode needs, from the report alone.
         %{
           "ok" => true,
           "project" => manifest.project,
-          "modes" => Orbitorc.Manifest.mode_names(manifest),
+          "modes" => modes,
+          "params" => Map.new(modes, &{&1, Orbitorc.Manifest.mode_params(manifest, &1)}),
           "engine_project" => manifest.engine_project
         }
 

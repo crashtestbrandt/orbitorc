@@ -10,7 +10,11 @@ defmodule OrbitorcWeb.RunLive do
 
   use OrbitorcWeb, :live_view
 
-  alias Orbitorc.{Run, Runs}
+  alias Orbitorc.Run
+
+  @verbs ~w(run-status)
+  @doc "The verbs this page runs; the parity test reads it."
+  def verbs, do: @verbs
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -18,9 +22,10 @@ defmodule OrbitorcWeb.RunLive do
 
     socket = assign(socket, id: id, page_title: "Run #{id}")
 
-    case Runs.fetch(id) do
+    case OrbitorcWeb.Verbs.run("run-status", %{"id" => id}, socket.assigns.caller) do
       {:ok, snap} -> {:ok, assign(socket, run: snap, error: nil)}
-      {:error, :not_found} -> {:ok, assign(socket, run: nil, error: "no run #{id}")}
+      {:error, {_status, reason}} -> {:ok, assign(socket, run: nil, error: reason)}
+      {:error, reason} -> {:ok, assign(socket, run: nil, error: to_string(reason))}
     end
   end
 
@@ -34,10 +39,10 @@ defmodule OrbitorcWeb.RunLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-5xl p-6 space-y-6">
-      <header>
-        <.link navigate={~p"/runs"} class="text-sm text-zinc-500 hover:underline">← Runs</.link>
+    <Layouts.app flash={@flash} caller={@caller} path={@path}>
+      <header class="flex items-baseline justify-between">
         <h1 class="text-2xl font-semibold font-mono">{@id}</h1>
+        <a href={~p"/api/run/#{@id}"} class="text-sm text-zinc-500 hover:underline">JSON</a>
       </header>
 
       <p :if={@error} class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -101,7 +106,7 @@ defmodule OrbitorcWeb.RunLive do
           </table>
         </div>
       </section>
-    </div>
+    </Layouts.app>
     """
   end
 
