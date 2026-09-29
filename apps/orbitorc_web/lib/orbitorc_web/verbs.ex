@@ -12,10 +12,10 @@ defmodule OrbitorcWeb.Verbs do
   an error that maps to a particular HTTP status carries it as `{:error, {status, reason}}`.
   """
 
-  alias Orbitorc.{Box, Fleet, Run, Runs}
+  alias Orbitorc.{Box, Fleet, Release, Run, Runs}
 
   @reads ~w(fleet doctor status logs pull verdict runs run-status dry-run)
-  @mutations ~w(lease launch stop build shot sync run)
+  @mutations ~w(lease launch stop build shot sync run upgrade)
 
   @doc "Every verb, sorted."
   @spec names() :: [String.t()]
@@ -172,6 +172,18 @@ defmodule OrbitorcWeb.Verbs do
     end
   end
 
+  # A release is a tag or a URL; a tag is resolved to the archive CI attached for the box's platform
+  # and architecture, which the box reported. The box does the rest and exits; its service manager
+  # brings the new release up.
+  defp do_run("upgrade", params, caller) do
+    with {:ok, box} <- required(params, "box"),
+         {:ok, release} <- required(params, "release"),
+         {:ok, entry} <- connected(box),
+         {:ok, url} <- Release.asset_url(release, entry.platform, entry.report["arch"]) do
+      Box.upgrade(box, caller, url, sha256: blank_to_nil(params["sha256"]), version: release)
+    end
+  end
+
   # Every named box, or every connected one; and whether they agree afterward. A fleet that is not on
   # one revision is not a fleet, so the check is part of the verb.
   defp do_run("sync", params, caller) do
@@ -222,6 +234,8 @@ defmodule OrbitorcWeb.Verbs do
     %{
       "name" => box.name,
       "platform" => box.platform,
+      "arch" => box.report["arch"],
+      "version" => box.report["agent_version"],
       "session_ok" => session_ok,
       "session" => session_detail,
       "lan" => box.lan,
@@ -258,6 +272,13 @@ defmodule OrbitorcWeb.Verbs do
       headless: truthy?(Map.get(params, "headless")),
       exported: blank_to_nil(Map.get(params, "exported"))
     ]
+  end
+
+  defp connected(name) do
+    case Fleet.fetch(name) do
+      {:ok, box} -> {:ok, box}
+      {:error, :not_connected} -> {:error, "#{name} is not connected"}
+    end
   end
 
   defp required(params, key) do

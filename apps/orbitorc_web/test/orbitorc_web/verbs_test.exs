@@ -79,6 +79,32 @@ defmodule OrbitorcWeb.VerbsTest do
     assert_receive {:asked, "beta", "stop", %{"all" => true}}
   end
 
+  test "AN UPGRADE RESOLVES A TAG TO THE BOX'S OWN ARCHIVE, and passes a URL through" do
+    pid = OrbitorcWeb.FakeBox.start("gamma")
+    on_exit(fn -> OrbitorcWeb.FakeBox.leave(pid) end)
+
+    assert {:ok, %{"version" => "0.2.0"}} =
+             Verbs.run("upgrade", %{"box" => "gamma", "release" => "v0.2.0"}, "t")
+
+    assert_receive {:asked, "gamma", "upgrade",
+                    %{"url" => url, "version" => "v0.2.0", "caller" => "t"}}
+
+    assert url == Orbitorc.Release.source() <> "/v0.2.0/orbitorc_agent-Linux-X64.tar.gz"
+
+    assert {:ok, _} =
+             Verbs.run(
+               "upgrade",
+               %{"box" => "gamma", "release" => "https://x.invalid/a.tar.gz", "sha256" => "ab"},
+               "t"
+             )
+
+    assert_receive {:asked, "gamma", "upgrade",
+                    %{"url" => "https://x.invalid/a.tar.gz", "sha256" => "ab"}}
+
+    assert {:error, {400, _}} =
+             Verbs.run("upgrade", %{"box" => "gamma", "release" => "v0.2.0"}, nil)
+  end
+
   test "a numeric-looking parameter is coerced, the rest left alone" do
     assert Verbs.coerce("47900") == 47_900
     assert Verbs.coerce("1.5") == 1.5

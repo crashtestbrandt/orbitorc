@@ -28,6 +28,7 @@ defmodule Orbitorc.Box do
       "launch" -> 60_000
       "build" -> 900_000
       "sync" -> 300_000
+      "upgrade" -> 600_000
       _ -> 30_000
     end
   end
@@ -132,6 +133,22 @@ defmodule Orbitorc.Box do
   @doc "Run a project's own build recipe for one target, and assert the artifact is not a stub."
   def build(box_name, caller, project, target) do
     ask(box_name, "build", %{"caller" => caller, "project" => project, "target" => target})
+  end
+
+  @doc """
+  Replace the box's agent with a release.
+
+  The box downloads the archive, checks it against its sha256, stages it beside the running release,
+  swaps and exits; its service manager brings the new release up. It needs the lease, and a box with a
+  job running refuses.
+  """
+  def upgrade(box_name, caller, url, opts \\ []) do
+    ask(box_name, "upgrade", %{
+      "caller" => caller,
+      "url" => url,
+      "sha256" => Keyword.get(opts, :sha256),
+      "version" => Keyword.get(opts, :version)
+    })
   end
 
   @doc "Capture one window of a running job. Never the screen."

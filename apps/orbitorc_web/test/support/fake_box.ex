@@ -8,6 +8,8 @@ defmodule OrbitorcWeb.FakeBox do
 
   @report %{
     "platform" => "linux",
+    "arch" => "x64",
+    "agent_version" => "0.1.0",
     "session_ok" => true,
     "session_detail" => "a display is present",
     "lan" => "10.0.0.5",
@@ -218,6 +220,11 @@ defmodule OrbitorcWeb.FakeBox do
   defp answer(_name, "sync", %{"revision" => rev}, state),
     do:
       {{:ok, %{"sha" => "feedfacefeedface", "branch" => "HEAD", "log" => "checked out #{rev}"}},
+       state}
+
+  defp answer(_name, "upgrade", %{"url" => url}, state),
+    do:
+      {{:ok, %{"version" => "0.2.0", "url" => url, "swap" => "done", "restart" => "pending"}},
        state}
 
   defp answer(_name, verb, _p, state), do: {{:error, "fake box does not serve #{verb}"}, state}

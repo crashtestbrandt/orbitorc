@@ -54,6 +54,7 @@ defmodule OrbitorcWeb.Router do
     post "/box/:box/stop", ApiController, :stop
     post "/box/:box/build", ApiController, :build
     post "/box/:box/jobs/:id/shot", ApiController, :shot
+    post "/box/:box/upgrade", ApiController, :upgrade
     post "/sync", ApiController, :sync
     post "/run", ApiController, :run
   end

@@ -86,6 +86,26 @@ Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
 An agent started that way runs in session 0 and reports "headless modes only" — it can be the
 authority, not a bot client. The logon task runs in the interactive session and can be both.
 
+## Upgrading
+
+`orbitorc upgrade v0.2.0 --all` (or one box, or an archive URL instead of a tag; the dashboard's
+fleet page has the same form). The control plane resolves a tag to the archive CI attached for the
+box's platform and architecture, both of which the box reports. The box then:
+
+1. Fetches the archive and the `.sha256` beside it (or takes `--sha256`), and refuses on a mismatch.
+2. Unpacks it beside the running release, as `<root>.staging`.
+3. Swaps: the running release becomes `<root>.old` (one generation, for a rollback by hand) and the
+   staged one takes its place — on macOS and Linux before the exit; on Windows after it, by a script
+   started outside the agent's process tree, because Windows will not rename a directory holding an
+   open executable.
+4. Answers, then exits with a non-zero status. Nothing here starts anything: the LaunchAgent
+   (`KeepAlive`), the systemd unit (`Restart=always`) or the scheduled task (restart on failure) brings
+   the new release up, and the box rejoins the fleet reporting its new `agent_version`.
+
+It needs the lease, and **a box with a job running refuses**: an exit mid-job would reap the job, and
+a measurement reaped by its own harness is the confident wrong answer this system exists to prevent.
+An agent started from a checkout (`mix`) rather than a release refuses too; it has nothing to replace.
+
 ## What the box reports
 
 `mix orbitorc doctor --box <name>` asks the box fresh. The report is deliberately wide: not "is the agent

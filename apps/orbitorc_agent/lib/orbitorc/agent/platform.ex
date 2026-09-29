@@ -34,6 +34,30 @@ defmodule Orbitorc.Agent.Platform do
     end
   end
 
+  @doc """
+  The processor architecture, in the words a release is named by: `x64` or `arm64`.
+
+  Windows reports it in the environment; the BEAM's `system_architecture` there is only `win32`.
+  """
+  @spec arch() :: String.t()
+  def arch do
+    raw =
+      case kind() do
+        :windows ->
+          System.get_env("PROCESSOR_ARCHITEW6432") || System.get_env("PROCESSOR_ARCHITECTURE") ||
+            ""
+
+        _ ->
+          :erlang.system_info(:system_architecture) |> to_string()
+      end
+
+    cond do
+      raw =~ ~r/aarch64|arm64/i -> "arm64"
+      raw =~ ~r/x86_64|amd64/i -> "x64"
+      true -> String.downcase(raw)
+    end
+  end
+
   @doc "Where this box keeps its agent configuration, jobs and audit log."
   @spec config_dir() :: Path.t()
   def config_dir do
