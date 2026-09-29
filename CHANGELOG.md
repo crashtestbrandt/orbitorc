@@ -7,6 +7,8 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-29
+
 ### Added
 
 - `upgrade`: replace an agent with a release, from the command line (`orbitorc upgrade v0.2.0 --all`)
@@ -17,7 +19,8 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [0.1.0] - 2026-09-29
 
-The first release.
+The first release. Its tag carries no build artifacts (CI lacked the permission to attach them);
+0.2.0 is the first release with them.
 
 ### Added
 
@@ -32,5 +35,6 @@ The first release.
 - Health checks a box reports before a launch: checkout revision and cleanliness, engine version,
   import-cache freshness, declared requirements, LFS pointers, pinned backends.
 
-[Unreleased]: https://github.com/crashtestbrandt/orbitorc/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/crashtestbrandt/orbitorc/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.2.0
 [0.1.0]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.1.0
