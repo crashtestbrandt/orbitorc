@@ -41,3 +41,40 @@ This is a public repository. It orchestrates projects it knows nothing about.
 - **Launch the raw engine binary, never a wrapper script.** A wrapper that runs the engine inside a
   process substitution orphans it when killed, and the orphan keeps its UDP port bound.
 - **Game traffic never rides the control plane.**
+
+## Versions
+
+The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One number, in
+`VERSION` at the root; every `mix.exs` reads it, and a tag `vX.Y.Z` on `main` must equal it or CI
+attaches nothing.
+
+**The public surface** — what a version number is a promise about:
+
+| Surface | Where it is defined |
+| --- | --- |
+| The manifest, `orbitorc.json` (`schema` and every key) | `Orbitorc.Manifest`, `docs/manifest.md` |
+| The agent's configuration file and install units | `Orbitorc.Agent.Config`, `install/`, `docs/agent.md` |
+| The agent–control plane protocol: verbs, payloads, the report | `Orbitorc.Agent.Link`, `OrbitorcWeb.AgentChannel` |
+| The JSON API and the command line's verbs and flags | `OrbitorcWeb.Verbs`, `OrbitorcWeb.Router`, `Orbitorc.CLI`, `docs/cli.md` |
+| The run's spec and snapshot | `Orbitorc.Run`, `docs/runs.md` |
+
+**Which number moves:**
+
+- **Major** — a change that breaks one of those surfaces: a manifest key removed or renamed, a verb or
+  flag removed, a payload or report shape changed so that an older agent and a newer control plane (or
+  the reverse) cannot work together. Before `1.0.0` a breaking change moves the minor instead, and the
+  changelog says so in its first line.
+- **Minor** — a new verb, flag, manifest key, check or page; anything an older client ignores safely.
+- **Patch** — a fix that changes no surface.
+
+**How a release is cut:**
+
+1. The PRs that land in it are already the release notes: each title is one line of them.
+2. Bump `VERSION`; move the `Unreleased` entries in `CHANGELOG.md` under the new version with the date;
+   commit as `chore(release) vX.Y.Z`.
+3. Tag `vX.Y.Z` on `main` and push the tag. CI checks the tag against `VERSION`, builds the agent, the
+   control plane and the command line for Linux, macOS and Windows, and attaches them to a GitHub release
+   with generated notes.
+
+An agent and a control plane on different minors are expected to work together within a major; a PR
+that makes that untrue is a breaking change and says so in its title.
