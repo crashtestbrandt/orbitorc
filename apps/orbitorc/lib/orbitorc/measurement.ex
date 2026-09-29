@@ -25,7 +25,7 @@ defmodule Orbitorc.Measurement do
   which nothing simulated, which is the exact answer this module exists to refuse.
 
   An allow-list fails the other way: a column nobody declared is not counted, which degrades to
-  `:unknown` rather than to a false pass. `classify/2` names every column it did not recognise, so the
+  `:unknown` rather than to a false pass. `classify/2` names every column it did not recognize, so the
   gap is visible instead of silent.
 
   ## Only a mode that can produce the evidence may be accused
@@ -75,7 +75,7 @@ defmodule Orbitorc.Measurement do
   @doc """
   Read a metrics CSV and say whether the declared evidence columns ever moved.
 
-  `:unknown` is not a pass. A CSV with no rows, no header or no recognised evidence column cannot be
+  `:unknown` is not a pass. A CSV with no rows, no header or no recognized evidence column cannot be
   judged, and saying so is different from saying the run was fine. A run that has not finished writing
   is a normal thing to look at, so only `:vacuous` is a failure.
   """

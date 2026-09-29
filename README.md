@@ -75,6 +75,6 @@ mix phx.server                  # the control plane on http://localhost:4000
 mix orbitorc doctor                 # who is connected
 ```
 
-## Licence
+## License
 
 Dual-licensed under Apache-2.0 or MIT, at your option. See [LICENSE](LICENSE).

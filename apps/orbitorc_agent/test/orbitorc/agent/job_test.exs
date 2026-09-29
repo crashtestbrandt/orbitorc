@@ -61,7 +61,7 @@ defmodule Orbitorc.Agent.JobTest do
     refute alive?(os_pid), "the operating-system process outlived its owner"
   end
 
-  test "a job that exits on its own reports its status, and is still readable afterwards" do
+  test "a job that exits on its own reports its status, and is still readable afterward" do
     builder = fn _dir, log_path ->
       {:ok, ["/bin/sh", "-c", "echo UP >> '#{log_path}'; exit 3"]}
     end

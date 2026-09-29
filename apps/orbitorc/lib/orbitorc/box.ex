@@ -149,7 +149,7 @@ defmodule Orbitorc.Box do
   end
 
   @doc """
-  Bring every named box to one revision, and say which of them disagree afterwards.
+  Bring every named box to one revision, and say which of them disagree afterward.
 
   **A fleet that is not on one revision is not a fleet**: two machines running different code produce a
   disagreement that reads as a netcode bug. So the check is part of the verb rather than something a

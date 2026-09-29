@@ -56,7 +56,7 @@ defmodule Orbitorc.Agent.Command do
   ## A sync is a force checkout, which is why it needs the lease
 
   It fetches, checks the revision out and hard-resets. Anything uncommitted in the tree is gone. That
-  is the intended behaviour for a box in a fleet — every machine must run the same code or a
+  is the intended behavior for a box in a fleet — every machine must run the same code or a
   disagreement between them reads as a netcode bug — and it is exactly why a caller mid-measurement
   must be able to hold the box against it.
 
@@ -222,7 +222,7 @@ defmodule Orbitorc.Agent.Command do
         {:error, "no window matching #{inspect(hint)} on this box"}
 
       {:ok, %{status: 3}} ->
-        {:error, "the window matching #{inspect(hint)} has no size (minimised?)"}
+        {:error, "the window matching #{inspect(hint)} has no size (minimized?)"}
 
       {:ok, %{status: 4}} ->
         {:error, "the window refused to paint itself; no screen fallback is offered"}

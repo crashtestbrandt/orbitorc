@@ -62,7 +62,7 @@ A token in `engine` or `argv` is a string, or `{"arg": "...", "if": "param", "un
 | --- | --- |
 | `port`, `listen` | If the mode declares a default for it and the caller did not send one, the box substitutes its own configured game or relay port. That keeps a job off the ports a project's own harnesses bind on the same machine. |
 | `metrics`, `record`, `replay` | `"auto"` becomes a real file inside the job's own directory. A caller never names a path on a machine it cannot see. |
-| `scene` | Normalised to `res://…` and refused if it leaves the tree. |
+| `scene` | Normalized to `res://…` and refused if it leaves the tree. |
 
 ## `checks`
 

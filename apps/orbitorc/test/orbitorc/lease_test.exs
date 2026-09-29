@@ -36,7 +36,7 @@ defmodule Orbitorc.LeaseTest do
     assert {:ok, _, _} = Lease.claim(lease, "bob", @t0 + 60_001)
   end
 
-  test "a ttl beyond the maximum is clamped rather than honoured" do
+  test "a ttl beyond the maximum is clamped rather than honored" do
     {:ok, _lease, ttl} = Lease.claim(Lease.new(), "alice", @t0, ttl_ms: 99_999_999)
     assert ttl == Lease.max_ttl_ms()
   end
