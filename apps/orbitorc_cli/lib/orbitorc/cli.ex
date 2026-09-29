@@ -340,9 +340,15 @@ defmodule Orbitorc.CLI do
 
     case Req.get(url, params: query, into: :self, receive_timeout: :infinity, retry: false) do
       {:ok, %{status: 200} = resp} ->
-        resp.body
-        |> Enum.reduce_while("", fn chunk, buffer -> consume(buffer <> chunk) end)
-        |> then(fn _ -> :ok end)
+        # A control plane that goes away mid-stream closes the connection; that is the end of the
+        # follow, said plainly, not a crash.
+        try do
+          resp.body
+          |> Enum.reduce_while("", fn chunk, buffer -> consume(buffer <> chunk) end)
+          |> then(fn _ -> :ok end)
+        rescue
+          e -> {:error, "the stream ended: #{Exception.message(e)}"}
+        end
 
       {:ok, %{status: status, body: body}} ->
         body = if is_struct(body), do: Enum.join(body), else: inspect(body)
