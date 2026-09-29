@@ -7,6 +7,8 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-29
+
 ### Added
 
 - `run --authority-mode MODE --load-mode MODE` on the command line, and the same two fields on the runs
@@ -14,6 +16,12 @@ control plane and the command line for Linux, macOS and Windows to it.
   from the command line.
 - `sync.import` in a manifest: the box imports the engine project after every sync, so a renamed class
   does not resolve to `Variant` out of the previous checkout's cache. The sync's reply says so.
+
+### Fixed
+
+- A job that exited within milliseconds of its launch could take the job registry down (the registry
+  asked itself for the job's directory); it now reads the record under its own root.
+- A report that raises no longer takes the link down; it is logged.
 
 ## [0.2.0] - 2026-09-29
 
@@ -43,6 +51,7 @@ The first release. Its tag carries no build artifacts (CI lacked the permission 
 - Health checks a box reports before a launch: checkout revision and cleanliness, engine version,
   import-cache freshness, declared requirements, LFS pointers, pinned backends.
 
-[Unreleased]: https://github.com/crashtestbrandt/orbitorc/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/crashtestbrandt/orbitorc/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.3.0
 [0.2.0]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.2.0
 [0.1.0]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.1.0
