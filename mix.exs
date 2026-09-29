@@ -72,7 +72,9 @@ defmodule Orbitorc.Umbrella.MixProject do
     [
       # run `mix setup` in all child apps
       setup: ["cmd mix setup"],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"],
+      # The standalone command line: apps/orbitorc_cli/orbitorc, an escript a consumer's task runner aliases.
+      escript: ["cmd --app orbitorc_cli mix escript.build"]
     ]
   end
 end

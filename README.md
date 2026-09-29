@@ -71,9 +71,13 @@ Built and tested; run against real machines only on one box so far.
 
 ```sh
 mix setup                       # dependencies, the database, assets
-mix phx.server                  # the control plane on http://localhost:4000
-mix orbitorc doctor                 # who is connected
+mix phx.server                  # the control plane, on every interface at :4000
+mix orbitorc doctor             # who is connected
+mix escript                     # the standalone command line: apps/orbitorc_cli/orbitorc
 ```
+
+CI builds the agent, the control plane and the command line for Linux, macOS and Windows on every
+push, and attaches them to a release on a tag. `flake.nix` builds the agent for NixOS.
 
 ## License
 

@@ -147,5 +147,99 @@ defmodule Orbitorc.Agent.ConfigTest do
       {:ok, config, _} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
       assert %{"ok" => true} = Health.requirements(config, "p", %{repo: repo})
     end
+
+    test "A GIT LFS POINTER IS NOT THE LIBRARY IT STANDS FOR", %{dir: dir} do
+      # A checkout made without LFS leaves a 130-byte text stub where the library should be. It exists,
+      # so an existence check passes, and the engine fails three steps away with an invalid header.
+      repo = Path.join(dir, "p")
+      write_manifest(repo, %{"checks" => %{"requires" => ["addons/native/bin"]}})
+      File.mkdir_p!(Path.join(repo, "addons/native/bin"))
+
+      File.write!(
+        Path.join(repo, "addons/native/bin/lib.so"),
+        "version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 5222400\n"
+      )
+
+      {:ok, config, _} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
+
+      assert %{"ok" => false, "missing" => ["addons/native/bin"]} =
+               Health.requirements(config, "p", %{repo: repo})
+
+      File.write!(Path.join(repo, "addons/native/bin/lib.so"), :crypto.strong_rand_bytes(4096))
+      assert %{"ok" => true} = Health.requirements(config, "p", %{repo: repo})
+    end
+  end
+
+  describe "pinned backends" do
+    defp write_pin(repo, lock_body, stamp_body) do
+      File.write!(Path.join(repo, "native.lock"), lock_body)
+      File.mkdir_p!(Path.join(repo, "addons/native"))
+      if stamp_body, do: File.write!(Path.join(repo, "addons/native/.fetched"), stamp_body)
+    end
+
+    defp sha(body), do: :crypto.hash(:sha256, body) |> Base.encode16(case: :lower)
+
+    test "a stamp carrying the lock's own sha256 is what the lock pins", %{dir: dir} do
+      repo = Path.join(dir, "p")
+
+      write_manifest(repo, %{
+        "checks" => %{
+          "pinned" => [%{"lock" => "native.lock", "stamp" => "addons/native/.fetched"}]
+        }
+      })
+
+      write_pin(repo, "tag = v0.4.0\n", "v0.4.0 #{sha("tag = v0.4.0\n")} profiling=0\n")
+      {:ok, config, _} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
+      assert %{"ok" => true, "detail" => detail} = Health.pinned(config, "p", %{repo: repo})
+      assert detail =~ "pins v0.4.0"
+    end
+
+    test "THE DRIFT THIS CATCHES: the checkout moved to a commit whose lock pins a different tag",
+         %{dir: dir} do
+      # The libraries on disk are still the old ones, and the failures that produces look like anything
+      # except a stale library.
+      repo = Path.join(dir, "p")
+
+      write_manifest(repo, %{
+        "checks" => %{
+          "pinned" => [%{"lock" => "native.lock", "stamp" => "addons/native/.fetched"}]
+        }
+      })
+
+      write_pin(repo, "tag = v0.5.0\n", "v0.4.0 #{sha("tag = v0.4.0\n")} profiling=0\n")
+      {:ok, config, _} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
+      assert %{"ok" => false, "detail" => detail} = Health.pinned(config, "p", %{repo: repo})
+      assert detail =~ "says v0.4.0 is installed"
+      assert detail =~ "run sync"
+    end
+
+    test "a missing lock is not ok: nothing then says what is installed", %{dir: dir} do
+      repo = Path.join(dir, "p")
+
+      write_manifest(repo, %{
+        "checks" => %{
+          "pinned" => [%{"lock" => "native.lock", "stamp" => "addons/native/.fetched"}]
+        }
+      })
+
+      {:ok, config, _} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
+      assert %{"ok" => false, "detail" => detail} = Health.pinned(config, "p", %{repo: repo})
+      assert detail =~ "nothing pins"
+    end
+
+    test "a missing stamp means a backend that was never fetched", %{dir: dir} do
+      repo = Path.join(dir, "p")
+
+      write_manifest(repo, %{
+        "checks" => %{
+          "pinned" => [%{"lock" => "native.lock", "stamp" => "addons/native/.fetched"}]
+        }
+      })
+
+      write_pin(repo, "tag = v0.4.0\n", nil)
+      {:ok, config, _} = Config.load(write_config(dir, [%{"name" => "p", "repo" => repo}]))
+      assert %{"ok" => false, "detail" => detail} = Health.pinned(config, "p", %{repo: repo})
+      assert detail =~ "nothing records"
+    end
   end
 end
