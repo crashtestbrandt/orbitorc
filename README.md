@@ -7,9 +7,17 @@ Earth Observatory (Black Marble 2016) and Milky Way from NASA/SVS *Deep Star Map
 
 Network orchestration for multiplayer games, at indie scale.
 
-![The dashboard: three connected boxes, one on a different revision with a dirty tree and a stale import cache, and the sync and upgrade forms that act on all of them](docs/img/dashboard.png)
+![The fleet page: three connected boxes, one on a different revision with a dirty tree and a stale import cache, and the sync and upgrade forms that act on all of them](docs/img/dashboard.png)
 
 <sub>The fleet page of a development control plane, with a pretend fleet. Every verb the command line has is also a form or a button here.</sub>
+
+![A box's page: its checks, its lease, a launch form built from the project's own manifest, the build form, and the job it is running](docs/img/box.png)
+
+<sub>One box. The checks lead with what makes a result untrustworthy; the launch form's fields are the parameters the project's manifest declares; a dry run shows the exact argv before anything runs.</sub>
+
+![The runs page: the form that starts a fleet run, and every run — one in flight, two done](docs/img/runs.png)
+
+<sub>Runs: an authority on one box, load on the others, measured until the clients finish, judged.</sub>
 
 Large studios test netcode on a fleet: a build goes to many machines, a session comes up across them,
 bots drive it under a chosen link, and every machine's metrics come back to one place. Unreal's

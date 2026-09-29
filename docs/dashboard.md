@@ -28,6 +28,8 @@ Every page links the JSON the API answers for the same thing.
 
 ![The runs page: the form that starts a run, and every run, in flight first](img/runs.png)
 
+![A run's page: its phase, and the timeline of what it did and learned, as it happens](img/run.png)
+
 ## Parity, enforced
 
 `OrbitorcWeb.Verbs` is the one table of verbs. The JSON API's one controller action and every page call
