@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "An agent's configuration. Copy to the platform's config directory and fill in:",
+    "  macOS    ~/Library/Application Support/orbitorc/config.json",
+    "  Linux    ${XDG_CONFIG_HOME:-~/.config}/orbitorc/config.json",
+    "  Windows  %LOCALAPPDATA%\\orbitorc\\config.json",
+    "",
+    "A FILE ON THE BOX, NEVER SOMETHING A CALLER CAN CHANGE OVER THE WIRE. A remote caller drives what",
+    "this box already offers and nothing more.",
+    "",
+    "control_plane  where the agent dials OUT to. Nothing connects to the box.",
+    "name           how this box appears in the fleet. One token per box, so one box can be revoked.",
+    "projects       each with its OWN checkout and its OWN engine binary. Never a checkout a CI runner",
+    "               shares: a runner deletes and re-fetches its tools mid-job, which would remove the",
+    "               engine from under a live measurement.",
+    "game_port      the band a job binds. Keep it clear of the ports a project's own CI harnesses use on",
+    "relay_port     the same machine, so a job here never makes an unrelated probe fail to bind.",
+    "job_retention  how many job directories to keep. Ids never repeat; the lowest are pruned at start."
+  ],
+
+  "control_plane": "wss://orbitorc.example.net/agent/websocket",
+  "name": "win-gpu",
+  "token": "REPLACE-WITH-THE-TOKEN-THE-CONTROL-PLANE-HOLDS-FOR-THIS-BOX",
+
+  "game_port": 47900,
+  "relay_port": 47910,
+  "job_retention": 200,
+
+  "projects": [
+    {
+      "name": "orbitnet",
+      "repo": "C:/boxes/orbitnet",
+      "engine_bin": "C:/engines/Godot_v4.7-stable_win64.exe"
+    }
+  ]
+}
