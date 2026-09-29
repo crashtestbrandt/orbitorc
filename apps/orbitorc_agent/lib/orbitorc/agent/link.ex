@@ -170,16 +170,6 @@ defmodule Orbitorc.Agent.Link do
     reply(socket, payload, normalize(result))
   end
 
-  defp reload_manifest(socket, name) do
-    {config, problem} = Config.reload_manifest(socket.assigns.config, name)
-    problems = Enum.reject(socket.assigns.problems, &String.starts_with?(&1, "#{name}: "))
-
-    assign(socket,
-      config: config,
-      problems: if(problem, do: problems ++ [problem], else: problems)
-    )
-  end
-
   @impl Slipstream
   def handle_message(@channel, "build", payload, socket) do
     caller = caller(payload)
@@ -288,6 +278,16 @@ defmodule Orbitorc.Agent.Link do
   end
 
   # --- sync, build, capture, pull -------------------------------------------------------------------
+
+  defp reload_manifest(socket, name) do
+    {config, problem} = Config.reload_manifest(socket.assigns.config, name)
+    problems = Enum.reject(socket.assigns.problems, &String.starts_with?(&1, "#{name}: "))
+
+    assign(socket,
+      config: config,
+      problems: if(problem, do: problems ++ [problem], else: problems)
+    )
+  end
 
   defp do_sync(nil, _caller, _payload), do: {:error, "this box has no configuration"}
 
