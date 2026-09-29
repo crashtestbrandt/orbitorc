@@ -125,8 +125,18 @@ defmodule Orbitorc.Agent.SyncTest do
     path
   end
 
+  # A CI runner has no git identity; the commits here need one.
+  @identity [
+    {"GIT_AUTHOR_NAME", "orbitorc test"},
+    {"GIT_AUTHOR_EMAIL", "test@orbitorc.invalid"},
+    {"GIT_COMMITTER_NAME", "orbitorc test"},
+    {"GIT_COMMITTER_EMAIL", "test@orbitorc.invalid"}
+  ]
+
   defp git!(dir, args) do
-    {out, 0} = System.cmd("git", args, cd: dir, stderr_to_stdout: true)
-    String.trim(out)
+    case System.cmd("git", args, cd: dir, env: @identity, stderr_to_stdout: true) do
+      {out, 0} -> String.trim(out)
+      {out, status} -> flunk("git #{Enum.join(args, " ")} exited #{status}: #{out}")
+    end
   end
 end

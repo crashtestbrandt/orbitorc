@@ -106,6 +106,19 @@ defmodule Orbitorc.Agent.Jobs do
 
   defp from_disk(_), do: {:error, :no_such_job}
 
+  # A job can exit between its start and this question -- a bad argv fails in milliseconds, and so
+  # does a job that only writes its marker. The record it wrote on the way out answers instead of
+  # the question taking the registry down with it.
+  defp info_of(pid, id) do
+    Job.info(pid)
+  catch
+    :exit, _ ->
+      case from_disk(id) do
+        {:ok, info} -> info
+        _ -> %{id: id, alive: false}
+      end
+  end
+
   @doc "Stop one job."
   def stop(id) do
     with {:ok, pid} <- whereis(id) do
@@ -161,7 +174,7 @@ defmodule Orbitorc.Agent.Jobs do
       {:ok, pid} ->
         Process.monitor(pid)
         state = %{state | next: id + 1, jobs: Map.put(state.jobs, id, pid)}
-        {:reply, {:ok, id, Job.info(pid)}, state}
+        {:reply, {:ok, id, info_of(pid, id)}, state}
 
       {:error, reason} ->
         {:reply, {:error, reason}, %{state | next: id + 1}}
@@ -173,8 +186,8 @@ defmodule Orbitorc.Agent.Jobs do
     jobs =
       state.jobs
       |> Enum.sort_by(&elem(&1, 0))
-      |> Enum.flat_map(fn {_id, pid} ->
-        if Process.alive?(pid), do: [Job.info(pid)], else: []
+      |> Enum.flat_map(fn {id, pid} ->
+        if Process.alive?(pid), do: [info_of(pid, id)], else: []
       end)
 
     {:reply, jobs, state}
