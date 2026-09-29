@@ -52,6 +52,10 @@ jobs:
   release:
     name: release (${{ matrix.os }})
     needs: test
+    # Attaching assets and generating notes on a tag's release writes to the repository; the default
+    # token cannot, and the first tag's release came out empty for want of this.
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
