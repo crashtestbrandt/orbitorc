@@ -64,8 +64,13 @@ chmod 600 "$PLIST"
 plutil -lint "$PLIST" >/dev/null
 
 launchctl bootout "gui/$(id -u)/net.orbitorc.control-plane" 2>/dev/null || true
-sleep 2
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+# launchd unloads a service asynchronously; a bootstrap that lands while the previous instance is still
+# being removed fails with "Input/output error". Try for a while rather than once.
+for attempt in 1 2 3 4 5 6 7 8; do
+	launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null && break
+	[ "$attempt" -eq 8 ] && { echo "launchd would not take net.orbitorc.control-plane; run: launchctl bootstrap gui/$(id -u) $PLIST" >&2; exit 1; }
+	sleep 3
+done
 launchctl kickstart -k "gui/$(id -u)/net.orbitorc.control-plane"
 echo "installed: $PLIST"
 echo "env:       $ENV_FILE"
