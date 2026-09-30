@@ -7,6 +7,12 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Fixed
+
+- The macOS installers retry `launchctl bootstrap`: launchd unloads a service asynchronously, and a
+  bootstrap that lands while the previous instance is still being removed fails with "Input/output
+  error", which is what a reinstall hit.
+
 ## [0.3.2] - 2026-09-30
 
 ### Fixed
