@@ -7,6 +7,11 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Fixed
+
+- A tag's release carries its notes once. Each platform's build published the release, and every one
+  after the first appended its generated notes again; one job now publishes it.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added
