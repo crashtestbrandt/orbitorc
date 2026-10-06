@@ -7,6 +7,8 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-06
+
 ### Fixed
 
 - A sync takes the remote's tags. A tag re-created on the remote made the fetch refuse ("would clobber
@@ -112,7 +114,8 @@ The first release. Its tag carries no build artifacts (CI lacked the permission 
 - Health checks a box reports before a launch: checkout revision and cleanliness, engine version,
   import-cache freshness, declared requirements, LFS pointers, pinned backends.
 
-[Unreleased]: https://github.com/crashtestbrandt/orbitorc/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/crashtestbrandt/orbitorc/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.4.1
 [0.4.0]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.4.0
 [0.3.2]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.3.2
 [0.3.1]: https://github.com/crashtestbrandt/orbitorc/releases/tag/v0.3.1
