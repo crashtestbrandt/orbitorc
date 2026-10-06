@@ -68,10 +68,17 @@ defmodule Orbitorc.Agent.Command do
   `sync main` checks out `origin/main`, detached. A box's local `main` is whatever it last checked out
   and never moves on its own, so a checkout of the local branch after a fetch would report success and
   leave the fleet where it was. A sha or a tag is itself.
+
+  ## The remote's tags win
+
+  The fetch takes `--force`, so a tag re-created on the remote replaces the box's copy. Without it git
+  refused the fetch ("would clobber existing tag"), and one re-tagged release blocked every sync of that
+  box until someone fixed the checkout by hand.
   """
   @spec sync(Path.t(), String.t(), keyword()) :: {:ok, map()} | {:error, String.t()}
   def sync(repo, revision, opts \\ []) do
-    with {:ok, fetched} <- run_all([["git", "fetch", "--all", "--prune", "--tags"]], repo, opts),
+    with {:ok, fetched} <-
+           run_all([["git", "fetch", "--all", "--prune", "--tags", "--force"]], repo, opts),
          target = remote_or_itself(repo, revision, opts),
          steps = [["git", "checkout", "--force", target], ["git", "reset", "--hard", "HEAD"]],
          {:ok, log} <- run_all(steps, repo, opts) do
