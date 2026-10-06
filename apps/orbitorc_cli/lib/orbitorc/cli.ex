@@ -5,6 +5,7 @@ defmodule Orbitorc.CLI do
       orbitorc fleet                                every box, from the fleet's cache
       orbitorc doctor                               the same, as a report per box
       orbitorc doctor --box win                     one box, asked fresh
+      orbitorc doctor --all                         every box, asked fresh
       orbitorc sync main orbitnet                   every box to one revision, and say if they disagree
       orbitorc lease claim --box win                take a box; mutating verbs need it
       orbitorc launch orbitnet server --box win     launch a mode a project declares
@@ -29,7 +30,8 @@ defmodule Orbitorc.CLI do
 
   ## Targets
 
-  `--box NAME` is one box. `--all` is every connected box that can serve the verb: for a launch, the
+  `--box NAME` is one box; repeated, it names several, and a verb that acts on one box refuses a second.
+  `--all` is every connected box that can serve the verb: for a launch, the
   boxes reporting `launch.<project>.<mode>`; for a build, the boxes reporting `export.<target>`; for a
   stop or a sync, every box. A fan-out reports one block per box and exits non-zero if any refused.
 
@@ -52,7 +54,9 @@ defmodule Orbitorc.CLI do
   @default_url "http://localhost:4000"
 
   @switches [
-    box: :string,
+    # Repeatable. A verb that fans out takes every one named; a verb that acts on one box refuses a second
+    # rather than keeping the last, which once synced one box of the two named and reported agreement.
+    box: :keep,
     all: :boolean,
     caller: :string,
     url: :string,
@@ -114,10 +118,14 @@ defmodule Orbitorc.CLI do
 
   # --- verbs ----------------------------------------------------------------------------------------
 
+  # Bare, the fleet's cache: what each box last reported. Named boxes or `--all` are asked fresh, one
+  # request per box; `--all` once fell through to the cache and read a stale import as current.
   defp dispatch(["doctor" | _], opts) do
-    case opts[:box] do
-      nil -> get("/api/fleet", %{}, opts) |> show(opts, &fleet_block/1)
-      box -> get("/api/box/#{box}/doctor", %{}, opts) |> show(opts)
+    if boxes(opts) == [] and !opts[:all] do
+      get("/api/fleet", %{}, opts) |> show(opts, &fleet_block/1)
+    else
+      fan_out(opts, :every_box, fn box -> get("/api/box/#{box}/doctor", %{}, opts) end)
+      |> show_each(opts, &pretty/1)
     end
   end
 
@@ -315,19 +323,28 @@ defmodule Orbitorc.CLI do
 
   # --- fan-out --------------------------------------------------------------------------------------
 
-  # One box, or every box that can serve the verb. A fan-out returns `{:many, [{box, result}]}`.
+  # One box, the boxes named, or every box that can serve the verb. More than one returns
+  # `{:many, [{box, result}]}`.
   defp fan_out(opts, selector, call) do
-    cond do
-      opts[:box] -> call.(opts[:box])
-      opts[:all] ->
+    case {boxes(opts), !!opts[:all]} do
+      {[box], _} -> call.(box)
+      {[_ | _] = named, _} -> each(named, call)
+      {[], true} ->
         case boxes_for(selector, opts) do
           {:ok, []} -> {:error, "no connected box can serve this"}
-          {:ok, boxes} -> {:many, boxes |> Task.async_stream(fn b -> {b, call.(b)} end, timeout: 960_000, ordered: true) |> Enum.map(fn {:ok, r} -> r end)}
+          {:ok, boxes} -> each(boxes, call)
           {:error, _} = e -> e
         end
-      true -> {:error, "this verb needs --box NAME or --all (orbitorc doctor lists what is connected)"}
+      {[], false} -> {:error, "this verb needs --box NAME or --all (orbitorc doctor lists what is connected)"}
     end
   end
+
+  defp each(boxes, call) do
+    {:many, boxes |> Task.async_stream(fn b -> {b, call.(b)} end, timeout: 960_000, ordered: true) |> Enum.map(fn {:ok, r} -> r end)}
+  end
+
+  # Every `--box` given, in order.
+  defp boxes(opts), do: opts |> Keyword.get_values(:box) |> Enum.uniq()
 
   defp boxes_for(:every_box, opts) do
     with {:ok, %{"boxes" => boxes}} <- request(:get, "/api/fleet", %{}, opts), do: {:ok, Enum.map(boxes, & &1["name"])}
@@ -560,9 +577,10 @@ defmodule Orbitorc.CLI do
   end
 
   defp box!(opts) do
-    case opts[:box] do
-      nil -> {:error, "this verb needs --box NAME (orbitorc doctor lists what is connected)"}
-      box -> {:ok, box}
+    case boxes(opts) do
+      [] -> {:error, "this verb needs --box NAME (orbitorc doctor lists what is connected)"}
+      [box] -> {:ok, box}
+      several -> {:error, "this verb acts on one box; --box was given #{Enum.join(several, ", ")}"}
     end
   end
 
@@ -606,7 +624,7 @@ defmodule Orbitorc.CLI do
   defp ttl(opts), do: opts[:ttl] && opts[:ttl] * 1_000
 
   defp put_boxes(body, opts) do
-    case Keyword.get_values(opts, :load_box) ++ List.wrap(opts[:box]) do
+    case Keyword.get_values(opts, :load_box) ++ boxes(opts) do
       [] -> body
       boxes -> Map.put(body, "boxes", Enum.uniq(boxes))
     end

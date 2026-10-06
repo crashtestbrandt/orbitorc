@@ -7,6 +7,14 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Fixed
+
+- `--box` can be repeated. It kept only its last value, so `sync main p --box a --box b` synced b alone
+  and reported that every box agreed. A verb that fans out now reaches every box named; a verb that acts
+  on one box refuses a second.
+- `doctor --all` asks every box fresh. It answered from the fleet's cache, so a box that had just been
+  re-imported still read as stale. A bare `doctor` is still the cache.
+
 ## [0.4.1] - 2026-10-06
 
 ### Fixed
