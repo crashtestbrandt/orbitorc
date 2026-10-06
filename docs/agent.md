@@ -70,6 +70,11 @@ opened at**: a browser's socket carries that origin and the endpoint refuses any
 opened at its LAN address without it refuses every dashboard socket. On Linux the same release runs under
 a systemd unit with the same environment; the file limit matters there too (launchd gives 256).
 
+On Windows, `install/windows-control-plane.ps1 -Release <release dir>` installs it as a boot task that runs
+as LOCAL SERVICE, needs no logon, and is started again if it stops. Its environment lives in
+`C:\ProgramData\orbitorc\control-plane.env`, readable by that account and administrators only; the
+installer adds `RELEASE_DISTRIBUTION=none`, so no Erlang distribution port is open. It listens on IPv4.
+
 ## Getting the release
 
 | | |

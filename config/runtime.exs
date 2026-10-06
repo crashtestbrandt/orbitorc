@@ -95,7 +95,9 @@ if config_env() == :prod and control_plane? do
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0},
+      # IPv4 on Windows. There an IPv6 listener is IPv6-only, and Erlang cannot clear that (`ipv6_v6only:
+      # false` is `einval`), so a control plane on Windows answered ::1 and no agent could join it.
+      ip: if(match?({:win32, _}, :os.type()), do: {0, 0, 0, 0}, else: {0, 0, 0, 0, 0, 0, 0, 0}),
       port: port
     ],
     secret_key_base: secret_key_base
