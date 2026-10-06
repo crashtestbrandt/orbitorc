@@ -39,6 +39,7 @@ the box already offers and nothing more.
 | `projects` | Each with its **own checkout and its own engine binary**. Never a checkout a CI runner shares: a runner deletes and re-fetches its tools mid-job, which would remove the engine from under a live measurement. |
 | `game_port` / `relay_port` | The band a job binds. Keep it clear of the ports a project's own harnesses use on the same machine, so a job here never makes an unrelated probe fail to bind. |
 | `job_retention` | Job directories to keep. Ids never repeat; the lowest are pruned at start, and the agent says which. |
+| `lan` | Optional. The IPv4 address other machines join this box at. Without it the agent takes the first routable address, skipping tunnels and Hyper-V adapters. Set it on a box with more than one network, such as Wi-Fi beside Ethernet or a VPN. |
 
 A project whose checkout has no usable `orbitorc.json` is reported, not fatal: the box still serves
 the others and `doctor` names the one that is not. A box with no configuration at all starts idle and

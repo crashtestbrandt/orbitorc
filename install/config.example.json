@@ -15,7 +15,9 @@
     "               engine from under a live measurement.",
     "game_port      the band a job binds. Keep it clear of the ports a project's own CI harnesses use on",
     "relay_port     the same machine, so a job here never makes an unrelated probe fail to bind.",
-    "job_retention  how many job directories to keep. Ids never repeat; the lowest are pruned at start."
+    "job_retention  how many job directories to keep. Ids never repeat; the lowest are pruned at start.",
+    "lan            optional. The IPv4 address other machines join this box at. Set it on a box with more",
+    "               than one network (Wi-Fi beside Ethernet, a VPN); without it the agent picks one."
   ],
 
   "control_plane": "wss://orbitorc.example.net/agent/websocket",

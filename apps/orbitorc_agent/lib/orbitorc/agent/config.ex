@@ -16,7 +16,8 @@ defmodule Orbitorc.Agent.Config do
         ],
         "game_port": 47900,
         "relay_port": 47910,
-        "job_retention": 200
+        "job_retention": 200,
+        "lan": "192.168.1.20"
       }
 
   | Key | |
@@ -26,6 +27,7 @@ defmodule Orbitorc.Agent.Config do
   | `token` | Proves this box to the control plane. One per box, so one box can be revoked alone. |
   | `projects` | Each with its own checkout and its own engine binary. **Never a checkout a CI runner shares**: a runner deletes and re-fetches its tools mid-job, which would remove the engine from under a live measurement. |
   | `game_port` / `relay_port` | The band a job binds. Kept away from the ports a project's own CI harnesses use, so a job here can never collide with a build on the same box. |
+  | `lan` | Optional. The IPv4 address other machines join this box at. Without it the agent picks one (`Orbitorc.Agent.Platform.lan_address/0`); set it on a box with more than one network, such as Wi-Fi beside Ethernet or a VPN. |
   """
 
   @default_game_port 47900
@@ -41,6 +43,7 @@ defmodule Orbitorc.Agent.Config do
             game_port: @default_game_port,
             relay_port: @default_relay_port,
             job_retention: @default_job_retention,
+            lan: nil,
             jobs_dir: nil,
             source: nil
 
@@ -96,6 +99,7 @@ defmodule Orbitorc.Agent.Config do
     with {:ok, control_plane} <- nonempty(raw, "control_plane"),
          {:ok, name} <- nonempty(raw, "name"),
          {:ok, token} <- nonempty(raw, "token"),
+         {:ok, lan} <- lan(raw),
          {:ok, projects} <- projects(raw) do
       {:ok,
        %__MODULE__{
@@ -106,6 +110,7 @@ defmodule Orbitorc.Agent.Config do
          game_port: int(raw, "game_port", @default_game_port),
          relay_port: int(raw, "relay_port", @default_relay_port),
          job_retention: int(raw, "job_retention", @default_job_retention),
+         lan: lan,
          jobs_dir:
            Map.get(raw, "jobs_dir") || Path.join(Orbitorc.Agent.Platform.config_dir(), "jobs"),
          source: config_path
@@ -117,6 +122,24 @@ defmodule Orbitorc.Agent.Config do
     case Map.get(raw, key) do
       value when is_binary(value) and value != "" -> {:ok, value}
       _ -> {:error, "the configuration declares no #{key}"}
+    end
+  end
+
+  # A wrong address here sends every client to a box that is not listening, so anything that is not a
+  # dotted IPv4 address refuses to load rather than being ignored.
+  defp lan(raw) do
+    case Map.get(raw, "lan") do
+      nil ->
+        {:ok, nil}
+
+      value when is_binary(value) ->
+        case :inet.parse_ipv4strict_address(String.to_charlist(value)) do
+          {:ok, _} -> {:ok, value}
+          {:error, _} -> {:error, "lan must be a dotted IPv4 address, not #{inspect(value)}"}
+        end
+
+      value ->
+        {:error, "lan must be a dotted IPv4 address, not #{inspect(value)}"}
     end
   end
 
