@@ -215,15 +215,17 @@ defmodule OrbitorcWeb.FleetLive do
           <table class="w-full">
             <tbody>
               <tr :for={{box, r} <- Enum.sort(@sync_result.synced)} class="border-t border-zinc-100">
-                <td class="py-1 font-medium">{box}</td>
-                <td class="font-mono">{String.slice(r["sha"] || "?", 0, 8)}</td>
+                <td class="whitespace-nowrap py-1 pr-4 font-medium">{box}</td>
+                <td class="whitespace-nowrap pr-4 font-mono">
+                  {String.slice(r["sha"] || "?", 0, 8)}
+                </td>
                 <td class="text-zinc-500">{r["branch"]}</td>
               </tr>
               <tr
                 :for={{box, reason} <- Enum.sort(@sync_result.failed)}
                 class="border-t border-zinc-100"
               >
-                <td class="py-1 font-medium">{box}</td>
+                <td class="whitespace-nowrap py-1 pr-4 font-medium">{box}</td>
                 <td colspan="2" class="text-red-700">refused: {reason}</td>
               </tr>
             </tbody>
@@ -275,7 +277,7 @@ defmodule OrbitorcWeb.FleetLive do
         <table :if={@upgrade_result} class="mt-4 w-full text-sm">
           <tbody>
             <tr :for={{box, result} <- Enum.sort(@upgrade_result)} class="border-t border-zinc-100">
-              <td class="py-1 font-medium">{box}</td>
+              <td class="whitespace-nowrap py-1 pr-4 font-medium">{box}</td>
               <td class={upgrade_class(result)}>{upgrade_line(result)}</td>
             </tr>
           </tbody>

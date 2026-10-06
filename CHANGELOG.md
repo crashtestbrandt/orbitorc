@@ -9,6 +9,10 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ### Fixed
 
+- A sync takes the remote's tags. A tag re-created on the remote made the fetch refuse ("would clobber
+  existing tag"), and that box failed every sync until someone fixed its checkout by hand.
+- The sync and upgrade results on the fleet page keep the box name in its own column. A long refusal
+  squeezed it until the name ran into the commit beside it.
 - A tag's release carries its notes once. Each platform's build published the release, and every one
   after the first appended its generated notes again; one job now publishes it.
 
