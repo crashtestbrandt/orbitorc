@@ -1,6 +1,7 @@
 # Every push and pull request: the three suites on the three platforms an agent runs on. Then, from the
-# same commit, the two releases and the command line as artifacts per platform -- a release must be
-# built on its target platform, and a box should not need Elixir installed to run an agent.
+# same commit, the two releases and the command line built per platform -- a release must be built on its
+# target platform, and a box should not need Elixir installed to run an agent. A pull request builds them
+# and proves the command line starts; only a push to main or a tag uploads them as artifacts.
 #
 # On a tag, the same artifacts are attached to a GitHub release.
 name: ci
@@ -83,17 +84,22 @@ jobs:
           out="$(./orbitorc fleet --url http://127.0.0.1:9 2>&1 || true)"
           echo "$out" | grep -q "could not reach" || { echo "the command line did not start cleanly:"; echo "$out"; exit 1; }
         working-directory: apps/orbitorc_cli
-      - uses: actions/upload-artifact@v4
+      # Uploaded from a push only. A pull request's builds are installed by nobody (a box upgrades from a
+      # tagged release), and each upload counts against the account's artifact storage quota.
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
           name: orbitorc_agent-${{ runner.os }}-${{ runner.arch }}
           path: _build/prod/rel/orbitorc_agent
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
           name: orbitorc-${{ runner.os }}-${{ runner.arch }}
           path: _build/prod/rel/orbitorc
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
           name: orbitorc-cli-${{ runner.os }}-${{ runner.arch }}
           path: apps/orbitorc_cli/orbitorc
