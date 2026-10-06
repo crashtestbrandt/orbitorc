@@ -7,7 +7,16 @@ control plane and the command line for Linux, macOS and Windows to it.
 
 ## [Unreleased]
 
+### Added
+
+- An agent's configuration takes an optional `lan`: the IPv4 address other machines join the box at. Set
+  it on a box with more than one network. Anything that is not a dotted IPv4 address refuses to load.
+
 ### Fixed
+
+- An agent on Windows no longer advertises a Hyper-V adapter as its LAN address. Windows names every
+  interface by device path, so the name filter matched nothing there, and a new virtual switch that
+  enumerated first was joined by nobody. Adapters with Hyper-V's MAC prefix (`00:15:5D`) are skipped.
 
 - The macOS installers retry `launchctl bootstrap`: launchd unloads a service asynchronously, and a
   bootstrap that lands while the previous instance is still being removed fails with "Input/output

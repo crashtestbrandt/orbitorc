@@ -198,16 +198,29 @@ defmodule Orbitorc.Agent.Platform do
   @spec lan_address() :: String.t() | nil
   def lan_address do
     case :inet.getifaddrs() do
-      {:ok, interfaces} ->
-        interfaces
-        |> Enum.reject(fn {name, _opts} -> tunnel_interface?(to_string(name)) end)
-        |> Enum.flat_map(fn {_name, opts} -> Keyword.get_values(opts, :addr) end)
-        |> Enum.find_value(&routable_v4/1)
-
-      _ ->
-        nil
+      {:ok, interfaces} -> pick_lan(interfaces)
+      _ -> nil
     end
   end
+
+  @doc """
+  The first routable IPv4 address among `interfaces`, in the shape `:inet.getifaddrs/0` returns.
+
+  On Windows every interface is named `\\DEVICE\\TCPIP_{GUID}`, so the name filter matches nothing there.
+  Hyper-V's host adapters (the Default Switch, WSL's switch, any VM switch) are skipped by their MAC
+  prefix instead. A new switch can enumerate ahead of the physical adapter, and a box that advertised
+  it would be joined by nobody.
+  """
+  @spec pick_lan([{charlist() | String.t(), keyword()}]) :: String.t() | nil
+  def pick_lan(interfaces) do
+    interfaces
+    |> Enum.reject(fn {name, opts} -> tunnel_interface?(to_string(name)) or hyper_v?(opts) end)
+    |> Enum.flat_map(fn {_name, opts} -> Keyword.get_values(opts, :addr) end)
+    |> Enum.find_value(&routable_v4/1)
+  end
+
+  # 00:15:5D is the MAC prefix Hyper-V assigns to every virtual adapter, the host side included.
+  defp hyper_v?(opts), do: match?([0x00, 0x15, 0x5D | _], Keyword.get(opts, :hwaddr))
 
   # Tunnels a session must not ride, and the virtual bridges a container or VM host adds. A bridge
   # answers to nothing across the LAN, and a box that advertised one would be joined by nobody.

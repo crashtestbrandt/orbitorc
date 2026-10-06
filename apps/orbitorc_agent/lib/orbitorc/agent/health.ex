@@ -33,7 +33,7 @@ defmodule Orbitorc.Agent.Health do
       "agent_version" => version(),
       "session_ok" => session_ok,
       "session_detail" => session_detail,
-      "lan" => Platform.lan_address(),
+      "lan" => config.lan || Platform.lan_address(),
       "game_port" => config.game_port,
       "relay_port" => config.relay_port,
       "exports" => Platform.exports(),
