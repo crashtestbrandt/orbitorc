@@ -109,9 +109,17 @@ defmodule Orbitorc.Agent.Command do
   A cold project is imported twice: the first pass is priming (an extension perturbs the build order
   of a cache built from nothing) and is discarded. The engine's exit status is not the verdict -- an
   import prints errors it does not fail on -- the cache file is.
+
+  ## A cold project's extensions are listed before it is imported
+
+  An engine that finds an extension during its first scan loads it mid-session, and a headless session
+  that did so crashes at exit (godotengine/godot#123511; Godot 4.7.2 on Windows and macOS). So before
+  an import, a project with no `.godot/extension_list.cfg` gets one naming every extension the engine's
+  own scan would find, and the engine loads them at startup instead. See `seed_extension_list/1`.
   """
   @spec import_project(String.t(), Path.t(), keyword()) :: {:ok, map()} | {:error, String.t()}
   def import_project(engine_bin, project_path, opts \\ []) do
+    seed_extension_list(project_path)
     cache = Path.join([project_path, ".godot", "global_script_class_cache.cfg"])
     argv = [engine_bin, "--headless", "--path", project_path, "--import"]
     opts = Keyword.put_new(opts, :timeout_ms, 900_000)
@@ -129,6 +137,49 @@ defmodule Orbitorc.Agent.Command do
       if File.regular?(cache) and File.stat!(cache).size > 0,
         do: {:ok, %{"ok" => true, "passes" => passes, "cache" => cache}},
         else: {:error, "the import left no class cache at #{cache}: #{tail(output)}"}
+    end
+  end
+
+  @doc """
+  Write `.godot/extension_list.cfg` for a project that has none, and answer the paths written.
+
+  The list is every `*.gdextension` the engine's scan would find, as `res://` paths: hidden directories
+  and any directory holding a `.gdignore` are skipped, as the engine skips them. An existing list is the
+  engine's own and is left alone; a project with no extension gets no file.
+  """
+  @spec seed_extension_list(Path.t()) :: [String.t()]
+  def seed_extension_list(project_path) do
+    list = Path.join([project_path, ".godot", "extension_list.cfg"])
+
+    with false <- File.exists?(list),
+         [_ | _] = paths <- project_extensions(project_path, "") |> Enum.sort() do
+      File.mkdir_p!(Path.dirname(list))
+      File.write!(list, Enum.map_join(paths, &(&1 <> "\n")))
+      paths
+    else
+      _ -> []
+    end
+  end
+
+  defp project_extensions(root, rel) do
+    dir = Path.join(root, rel)
+
+    if rel != "" and File.exists?(Path.join(dir, ".gdignore")) do
+      []
+    else
+      dir
+      |> File.ls!()
+      |> Enum.reject(&String.starts_with?(&1, "."))
+      |> Enum.flat_map(fn name ->
+        child = if rel == "", do: name, else: rel <> "/" <> name
+        path = Path.join(root, child)
+
+        cond do
+          File.dir?(path) -> project_extensions(root, child)
+          String.ends_with?(name, ".gdextension") -> ["res://" <> child]
+          true -> []
+        end
+      end)
     end
   end
 

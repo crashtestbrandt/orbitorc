@@ -14,6 +14,10 @@ control plane and the command line for Linux, macOS and Windows to it.
   on one box refuses a second.
 - `doctor --all` asks every box fresh. It answered from the fleet's cache, so a box that had just been
   re-imported still read as stale. A bare `doctor` is still the cache.
+- A cold project's import no longer crashes the engine at exit. Godot 4.7.2 loads an extension it finds
+  during its first scan mid-session, and a headless session that did so crashes at shutdown
+  (godotengine/godot#123511). Before an import, a project with no `.godot/extension_list.cfg` now gets one
+  naming every extension the engine's scan would find, so they load at startup.
 
 ## [0.4.1] - 2026-10-06
 
