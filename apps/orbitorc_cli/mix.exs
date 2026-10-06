@@ -34,7 +34,10 @@ defmodule Orbitorc.CLI.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      # A stand-in control plane for the tests: the command line is exercised over real HTTP.
+      {:bandit, "~> 1.5", only: :test},
+      {:plug, "~> 1.16", only: :test}
     ]
   end
 end

@@ -42,13 +42,16 @@ jobs:
       - run: mix compile --warnings-as-errors
       - run: mix format --check-formatted
       # Each application's suite in its own directory: the domain needs no database, the agent none,
-      # and the control plane creates its own SQLite file through its test alias.
+      # the control plane creates its own SQLite file through its test alias, and the command line talks
+      # to a stand-in control plane over HTTP.
       - run: mix test
         working-directory: apps/orbitorc
       - run: mix test
         working-directory: apps/orbitorc_agent
       - run: mix test
         working-directory: apps/orbitorc_web
+      - run: mix test
+        working-directory: apps/orbitorc_cli
 
   release:
     name: release (${{ matrix.os }})

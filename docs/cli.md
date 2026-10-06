@@ -15,7 +15,7 @@ special, and it runs from anywhere.
 | Verb | Lease | |
 | --- | --- | --- |
 | `doctor` | | Every box, from the fleet's cache. |
-| `doctor --box NAME` | | One box, asked fresh. |
+| `doctor --box NAME [--box NAME …] \| --all` | | Each box named, or every box, asked fresh. |
 | `sync REV PROJECT [--box NAME \| --all]` | yes | Every named box (default: all) to one revision, and say whether they agree. A branch name is the remote's branch (`sync main` is `origin/main`); a sha or tag is itself. Needs no manifest in the checkout: a sync is how a checkout gets one, and the box serves it as soon as the sync returns; a manifest with `sync.import` then has the box import the tree. |
 | `lease claim\|renew\|release --box NAME [--ttl S]` | | Take, extend or give up a box. |
 | `launch PROJECT MODE --box NAME\|--all [--param k=v …] [--headless] [-- game args]` | yes | Launch a mode the project declares. `--all` is every box reporting `launch.PROJECT.MODE`. |
@@ -35,8 +35,9 @@ special, and it runs from anywhere.
 
 ## Targets
 
-`--box NAME` is one box. `--all` is every connected box that can serve the verb. A fan-out reports one
-block per box and exits non-zero if any box refused:
+`--box NAME` is one box, and repeating it names several: a verb that fans out reaches each, and a verb that
+acts on one box refuses a second. `--all` is every connected box that can serve the verb. A fan-out reports
+one block per box and exits non-zero if any box refused:
 
 ```
 win
